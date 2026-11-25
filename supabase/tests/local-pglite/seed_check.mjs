@@ -34,6 +34,7 @@ for (const n of ['founder', 'demo.orgadmin', 'demo.coordinator', 'demo.volunteer
   ids[n] = (await q(db, `insert into auth.users (email, email_confirmed_at) values ($1, now()) returning id`,
     [n === 'founder' ? 'founder@private.invalid' : `${n}@worldkin.test`])).rows[0].id;
 await q(db, `update public.profiles set platform_role='platform_admin' where id=$1`, [ids.founder]);
+const nonTestBefore = (await q(db, `select coalesce(json_agg(to_jsonb(p) order by p.id), '[]'::json) s from public.profiles p join auth.users u on u.id = p.id where u.email not like '%@worldkin.test'`)).rows[0].s;
 const r1 = await q(db, seed);
 check('E1', 'seed runs successfully as one transaction', r1.ok, r1);
 const c = (await q(db, `select
@@ -70,4 +71,16 @@ const j2 = await as(db, ids['demo.coordinator'], `select public.join_shift($1, g
 check('E10', 'coordinator (first aid) can join the skill-gated shift', j2.ok && j2.rows[0].r.status === 'confirmed', j2);
 const audit = (await q(db, `select count(*)::int n, count(*) filter (where actor_id is null)::int op from public.audit_logs`)).rows[0];
 check('E11', 'seed writes are audited as operator actions (actor_id null)', audit.n > 20 && audit.op >= 20, audit);
+const lab = (await q(db, `select
+  (select count(*)::int from public.organizations where name not like '%(Demo)' or description not like 'Demo organization%') orgs_unlabelled,
+  (select count(*)::int from public.opportunities where title not like '%(Demo%' or description not like 'Demo%') opps_unlabelled,
+  (select count(*)::int from public.shifts where coalesce(title,'') not like '%Demo%') shifts_unlabelled,
+  (select count(*)::int from public.profiles p join auth.users u on u.id=p.id where u.email like 'demo.%@worldkin.test' and p.full_name not like '%(Demo)') demo_profiles_unlabelled,
+  (select full_name from public.profiles where id=$1) founder_name,
+  (select platform_role::text from public.profiles where id=$1) founder_role,
+  (select count(*)::int from public.profiles p join auth.users u on u.id=p.id where u.email not like '%@worldkin.test' and p.updated_at > p.created_at) non_test_profiles_changed`, [ids.founder])).rows[0];
+check('E12', 'every seeded org/opportunity/shift/demo profile is labelled Demo', lab.orgs_unlabelled === 0 && lab.opps_unlabelled === 0 && lab.shifts_unlabelled === 0 && lab.demo_profiles_unlabelled === 0, lab);
+const nonTestAfter = (await q(db, `select coalesce(json_agg(to_jsonb(p) order by p.id), '[]'::json) s from public.profiles p join auth.users u on u.id = p.id where u.email not like '%@worldkin.test'`)).rows[0].s;
+check('E13', 'Founder and every non-test profile byte-identical before vs after seed; Founder still platform_admin',
+  JSON.stringify(nonTestBefore) === JSON.stringify(nonTestAfter) && lab.founder_role === 'platform_admin', { before: nonTestBefore, after: nonTestAfter });
 console.log(out.join('\n'));

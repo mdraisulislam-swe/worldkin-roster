@@ -150,3 +150,7 @@ Cannot be proven locally: (1) that PostgREST on this Supabase project logs in as
 ## 11. Applied to Supabase (M1 step a, 25 Nov 2026 ~01:45 BDT)
 
 All four migrations were applied in order to `worldkin-roster` (`ekkvwgohpzliwbmjnrth`) without errors. Local files were renamed to the remote migration versions (`20261124194202`, `20261124194253`, `20261124194325`, `20261124194532`); their contents are byte-identical to what was applied (SHA-256 prefixes `321e136b…`, `254ba4d5…`, `14a29569…`, `cedc86cf…`). The "DRAFT — NOT APPLIED" header comments are historical and were deliberately left unchanged to preserve that identity. Post-migration checks matched every expectation (9 tables with RLS, 15 policies, 32 functions all with pinned `search_path`, 22 API-executable functions, 19+2 triggers, 5 key constraints, `btree_gist` 1.7). Advisors: no ERROR; expected WARN 0028/0029 (SECURITY DEFINER RPC design) and INFO (unindexed FKs on low-volume columns, unused indexes on empty tables).
+
+## 12. Correction from live testing (25 Nov 2026)
+
+§1 stated that no deadlock cycle exists between RPCs. Live A05 run 1 disproved this for one case: two parallel `join_shift` calls by the **same volunteer** for two **overlapping** shifts can deadlock inside the exclusion constraint (40P01). Data integrity was preserved (one place only). Migration `wk05` (applied 25 Nov 2026; A05 runs 4–6 all pass) adds a per-volunteer lock (`profiles … FOR NO KEY UPDATE`) as the first lock in `join_shift`; lock order becomes volunteer profile → shift → signup. See `docs/TESTING.md` §7.
