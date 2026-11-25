@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { getOrganizationsForReview, reviewOrganization } from '../lib/api'
 import type { Enums } from '../lib/database.types'
@@ -8,6 +7,7 @@ import { toAppError } from '../lib/errors'
 import { CAUSE_LABELS, formatDateTime } from '../lib/format'
 import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge } from '../components/ui'
 import { useDialog } from '../components/dialog'
+import { AdminNav, OrgVerificationDetails } from './AdminPlatformPages'
 
 type Decision = Enums<'org_status'>
 /** Mirrors the database state machine (review_organization). */
@@ -37,8 +37,8 @@ export function AdminPage() {
 
   return (
     <>
-      <PageHeader title="Platform administration" subtitle="Review organizations before they can recruit volunteers."
-        actions={<Link to="/admin/audit" className="rounded-md border border-black/15 bg-white px-3.5 py-2 text-sm font-medium hover:bg-black/5">Audit log</Link>} />
+      <PageHeader title="Organization verification" subtitle="Review registration details and documents before an organization can publish opportunities." />
+      <AdminNav />
       <div className="mb-4 max-w-xs">
         <Select label="Show" value={filter} onChange={(e) => setFilter(e.currentTarget.value as Decision | '')}
           options={[{ value: 'pending', label: 'Pending review' }, { value: 'verified', label: 'Verified' }, { value: 'suspended', label: 'Suspended' }, { value: 'rejected', label: 'Rejected' }, { value: '', label: 'All' }]} />
@@ -58,6 +58,7 @@ export function AdminPage() {
                   {o.website && <p className="text-sm"><a className="text-brand-700 underline" href={o.website} target="_blank" rel="noreferrer noopener">{o.website}</a></p>}
                   {o.description && <p className="mt-2 max-w-2xl text-sm text-ink-700">{o.description}</p>}
                   {o.status_reason && <p className="mt-2 text-sm text-ink-500">Reason: {o.status_reason}</p>}
+                  <details className="mt-2"><summary className="cursor-pointer text-sm text-brand-700">Verification details &amp; documents</summary><div className="mt-2"><OrgVerificationDetails orgId={o.id} /></div></details>
                 </div>
                 <StatusBadge status={o.status} />
               </div>

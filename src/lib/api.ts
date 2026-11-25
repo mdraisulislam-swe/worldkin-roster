@@ -147,13 +147,17 @@ export type OpportunityInput = Pick<
   Tables<'opportunities'>,
   'title' | 'description' | 'cause' | 'mode' | 'country_code' | 'city' | 'skills_wanted' | 'requirements' | 'requires_skill_match' | 'is_sensitive'
 >
-export async function createOpportunity(orgId: string, v: OpportunityInput, publish: boolean) {
-  return unwrap(
-    await db().from('opportunities').insert({ ...v, org_id: orgId, status: publish ? 'published' : 'draft' }).select('id').single(),
-  )
+/** wk06 columns (compensation, selection mode, deadline) — not in the generated types until regeneration. */
+export type OpportunityExtraInput = {
+  compensation_type: 'voluntary' | 'stipend' | 'paid'; compensation_details: string | null
+  selection_mode: 'open' | 'application'; application_deadline: string | null
 }
-export async function updateOpportunity(id: string, v: Partial<OpportunityInput> & { status?: Enums<'opportunity_status'> }) {
-  return unwrap(await db().from('opportunities').update(v).eq('id', id).select('id').single())
+export async function createOpportunity(orgId: string, v: OpportunityInput & Partial<OpportunityExtraInput>, publish: boolean) {
+  const row = { ...v, org_id: orgId, status: publish ? 'published' : 'draft' }
+  return unwrap(await db().from('opportunities').insert(row as never).select('id').single())
+}
+export async function updateOpportunity(id: string, v: Partial<OpportunityInput & OpportunityExtraInput> & { status?: Enums<'opportunity_status'> }) {
+  return unwrap(await db().from('opportunities').update(v as never).eq('id', id).select('id').single())
 }
 
 export async function getOpportunityShifts(opportunityId: string) {

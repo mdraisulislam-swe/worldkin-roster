@@ -1,0 +1,107 @@
+applied: [
+  '20261124194202_wk01_types_tables.sql',
+  '20261124194253_wk02_helpers_triggers.sql',
+  '20261124194325_wk03_rls_grants.sql',
+  '20261124194532_wk04_rpc.sql',
+  '20261125135004_wk05_join_shift_volunteer_lock.sql',
+  '20261126000000_wk06_applications_platform.sql'
+]
+tables: 17 | rls on: 17 | policies: 28 | functions: 63 | triggers: 34
+PASS  ORG1   extended create_organization returns an id
+PASS  ORG2   private verification data stored separately
+PASS  ORG3   platform admins notified about the pending organization
+PASS  ORG4   org admins notified of verification
+PASS  PRIV1  other organization cannot read Org A private data
+PASS  PRIV2  coordinator of Org A can read it
+PASS  PRIV3  coordinator cannot change verification data (org admin only)
+PASS  OPP1   paid opportunity without compensation details is rejected
+PASS  OPP2   deadline is only allowed for application opportunities
+PASS  OPP3   stipend application opportunity and open opportunity created
+PASS  OPP4   shifts created
+PASS  AP1    direct join on an application opportunity is refused
+PASS  AP2    volunteer applies → submitted
+PASS  AP3    retry returns the same application (no duplicate)
+PASS  AP4    exactly one active application row
+PASS  AP5    org staff cannot apply to their own organization
+PASS  AP6    open opportunity does not take applications
+PASS  AP7    application after the deadline is refused
+PASS  AP8    organization admins notified of the application
+PASS  AP9    selection mode cannot change after applications exist
+PASS  P1     another organization cannot list Org A applicants
+PASS  P2     another organization sees no Org A application rows
+PASS  P3     another volunteer sees no one else’s applications
+PASS  P4     anonymous cannot read applications
+PASS  P5     volunteer reads own phone
+PASS  P6     organization staff cannot read applicant phone
+PASS  P7     coordinator lists applicants without phone/email/address
+PASS  P8     private review note invisible to the volunteer
+PASS  R1     application moved under review
+PASS  R2     invalid transition is refused
+PASS  O1     offer for a shift of another opportunity is refused
+PASS  O2     offer sent; application selected
+PASS  O3     expiry set by the server to at most 72 hours
+PASS  O4     second simultaneous offer refused
+PASS  O5     another volunteer cannot accept the offer
+PASS  O6     organization cannot accept on behalf of the volunteer
+PASS  O7     acceptance books through the booking core → confirmed
+PASS  O8     retrying acceptance is idempotent (replayed, one signup)
+PASS  O9     offer linked to the signup of the right volunteer and shift
+PASS  O10    withdrawal after acceptance is refused
+PASS  W1     accepting an offer for a full shift → waitlisted #1
+PASS  W2     capacity never exceeded
+PASS  E1     expired offer can never be accepted
+PASS  E2     reading lists marks the offer and application expired (server-side)
+PASS  E3     no seat was taken by the expired offer
+PASS  X1     revoked offer can never be accepted
+PASS  X2     application returns to under review after revoke
+PASS  X3     decline → application declined
+PASS  X4     declined offer cannot be accepted later
+PASS  X5     re-applying after a final outcome is allowed
+PASS  X6     volunteer sees rejection and reason
+PASS  X7     withdraw before acceptance
+PASS  D1     volunteer cannot insert applications directly
+PASS  D2     volunteer cannot change application status
+PASS  D3     volunteer cannot change offers
+PASS  D4     organization cannot write offers directly
+PASS  D5     internal booking core not callable
+PASS  D6     offer expiry helper not callable
+PASS  B1     open opportunity: join_shift still confirms directly
+PASS  N1     volunteer received offer + review notifications
+PASS  N2     volunteers cannot see each other’s notifications
+PASS  N3     volunteer can mark own notifications read
+PASS  N4     notification text cannot be edited
+PASS  F0     hours-verified notification created
+PASS  F1     participation history lists the verified record
+PASS  F2     feedback needs one’s own verified participation
+PASS  F3     participant leaves feedback
+PASS  F4     duplicate feedback prevented
+PASS  F5     public feedback shows rating and first name only
+PASS  F6     organization cannot moderate feedback
+PASS  F7     hidden feedback disappears from public view
+PASS  C1     volunteer submits a private complaint
+PASS  C2     the organization cannot read complaints about it
+PASS  C3     complaint not leaked through the organization audit log
+PASS  C4     reporter cannot resolve their own complaint
+PASS  C5     resolution needs a response
+PASS  C6     reporter sees the resolution
+PASS  S1     organization admin cannot suspend users
+PASS  S2     platform admin cannot suspend another platform admin or self
+PASS  S3     suspension needs a reason
+PASS  S4     suspended volunteer cannot join shifts
+PASS  S5     suspended volunteer cannot apply
+PASS  S6     user cannot lift own suspension
+PASS  S7     unsuspended volunteer can join again
+PASS  S8     admin user list includes emails for platform admins only
+PASS  S9     non-admin cannot list users
+PASS  M1     moderation needs a reason
+PASS  M2     moderated opportunity is closed with a reason
+PASS  M3     organization cannot republish a moderated opportunity
+PASS  M4     organization cannot clear moderation fields
+PASS  ST1    anonymous statistics are real counts
+PASS  ST2    organization directory lists verified organizations
+PASS  ST3    search filters by compensation type
+PASS  ST4    skill filter (case-insensitive) with closing-soon sort
+PASS  ST5    anonymous cannot read admin overview
+PASS  ST6    admin overview counts
+
+96/96 passed

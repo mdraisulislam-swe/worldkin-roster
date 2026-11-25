@@ -6,6 +6,9 @@ import { toAppError } from '../lib/errors'
 import { useNow } from '../lib/useNow'
 import { CAUSE_LABELS, MODE_LABELS } from '../lib/format'
 import { Alert, Card, EmptyState, ErrorState, LoadingState, PageHeader, Stat, StatusBadge } from '../components/ui'
+import { DashboardNav } from '../components/DashboardNav'
+import { orgNav } from '../lib/nav'
+import { getOrgFeedback } from '../lib/platform'
 
 /** Organization dashboard (M05 aggregates) + opportunity list for staff. */
 export function OrgPage() {
@@ -16,6 +19,7 @@ export function OrgPage() {
   const org = useQuery({ queryKey: ['org', orgId], queryFn: () => getOrganization(orgId) })
   const dash = useQuery({ queryKey: ['org-dashboard', orgId], queryFn: () => getOrgDashboard(orgId) })
   const opps = useQuery({ queryKey: ['org-opps', orgId], queryFn: () => getOrgOpportunities(orgId) })
+  const feedback = useQuery({ queryKey: ['org-feedback', orgId], queryFn: () => getOrgFeedback(orgId, 5) })
 
   if (org.isPending) return <LoadingState />
   if (org.isError) return <ErrorState message={toAppError(org.error).message} onRetry={() => org.refetch()} />
@@ -30,12 +34,12 @@ export function OrgPage() {
         actions={
           <>
             {o.status === 'verified' && <Link to={`/org/${orgId}/opportunities/new`} className="rounded-md bg-brand-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-800">New opportunity</Link>}
-            {isAdmin && <Link to={`/org/${orgId}/team`} className={linkBtn}>Team</Link>}
-            {isAdmin && <Link to={`/org/${orgId}/audit`} className={linkBtn}>Audit log</Link>}
+            {o.status === 'verified' && <Link to={`/organizations/${o.slug}`} className={linkBtn}>Public page</Link>}
           </>
         }
       />
-      {o.status === 'pending' && <div className="mb-6"><Alert tone="warning">Awaiting verification by a platform administrator. You can prepare drafts, but publishing and inviting staff unlock after verification.</Alert></div>}
+      <DashboardNav label="Organization dashboard" items={orgNav(orgId, isAdmin)} />
+      {o.status === 'pending' && <div className="mb-6"><Alert tone="warning">Awaiting verification by a Worldkin administrator. You can prepare drafts, but publishing unlocks after verification.{isAdmin && <> <Link className="underline" to={`/org/${orgId}/settings`}>Complete your details and upload verification documents</Link>.</>}</Alert></div>}
       {(o.status === 'suspended' || o.status === 'rejected') && (
         <div className="mb-6"><Alert tone="error">This organization is {o.status}{o.status_reason ? `: ${o.status_reason}` : ''}. Public listings and new sign-ups are disabled.</Alert></div>
       )}
@@ -81,6 +85,19 @@ export function OrgPage() {
             )
           })}
         </ul>
+      </section>
+      <section aria-labelledby="fb-h" className="mt-8">
+        <h2 id="fb-h" className="mb-3 text-lg font-semibold">Volunteer feedback</h2>
+        {feedback.isPending ? <LoadingState label="Loading feedback" /> : feedback.data && feedback.data.length > 0 ? (
+          <>
+            <p className="mb-2 text-sm text-ink-700">Average ★ {feedback.data[0].average_rating} from {feedback.data[0].total_count} verified participant{feedback.data[0].total_count === 1 ? '' : 's'}.</p>
+            <ul className="flex flex-col gap-2">
+              {feedback.data.map((f) => (
+                <li key={f.feedback_id}><Card><p aria-label={`${f.rating} out of 5`}>{'★'.repeat(f.rating)}</p>{f.comment && <p className="text-sm text-ink-700">{f.comment}</p>}<p className="text-xs text-ink-500">{f.reviewer_first_name} · {f.opportunity_title}</p></Card></li>
+              ))}
+            </ul>
+          </>
+        ) : <EmptyState title="No feedback yet">Volunteers can leave feedback after you verify their attendance.</EmptyState>}
       </section>
     </>
   )

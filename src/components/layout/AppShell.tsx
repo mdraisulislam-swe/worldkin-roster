@@ -2,6 +2,8 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { CONFIRM_PATH, readAuthRedirectError } from '../../lib/authRedirect'
+import { useQuery } from '@tanstack/react-query'
+import { getUnreadCount } from '../../lib/platform'
 import { LoadingState } from '../ui'
 
 const linkCls = ({ isActive }: { isActive: boolean }) =>
@@ -12,6 +14,10 @@ export function AppShell() {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const uid = session?.user.id
+  // Unread count: small HEAD count query, refreshed every minute and on navigation.
+  const unreadQ = useQuery({ queryKey: ['unread', uid, pathname], queryFn: () => getUnreadCount(uid!), enabled: !!uid, refetchInterval: 60_000, staleTime: 15_000 })
+  const unread = unreadQ.data ?? 0
   const mainRef = useRef<HTMLElement>(null)
   const firstRender = useRef(true)
   // After client-side navigation, move focus to the new page content so keyboard
@@ -24,7 +30,7 @@ export function AppShell() {
   // A confirmation link that fails (expired / already used) may land on any page,
   // e.g. the Site URL root. Route it to the confirmation page, which explains it.
   useEffect(() => {
-    if (pathname !== CONFIRM_PATH && readAuthRedirectError(window.location.hash, '')) {
+    if (pathname !== CONFIRM_PATH && pathname !== '/auth/reset' && readAuthRedirectError(window.location.hash, '')) {
       navigate(CONFIRM_PATH + window.location.hash, { replace: true })
     }
   }, [pathname, navigate])
@@ -46,10 +52,11 @@ export function AppShell() {
   const nav = (
     <>
       <NavLink to="/explore" className={linkCls} onClick={() => setOpen(false)}>Explore</NavLink>
-      {session && <NavLink to="/me" className={linkCls} onClick={() => setOpen(false)}>My shifts</NavLink>}
+      <NavLink to="/organizations" end className={linkCls} onClick={() => setOpen(false)}>Organizations</NavLink>
+      {session && <NavLink to="/me" className={linkCls} onClick={() => setOpen(false)}>My dashboard</NavLink>}
       {session && (
         <NavLink to="/orgs" className={linkCls} onClick={() => setOpen(false)}>
-          Organizations{memberships.length ? ` (${memberships.length})` : ''}
+          My organizations{memberships.length ? ` (${memberships.length})` : ''}
         </NavLink>
       )}
       {isPlatformAdmin && <NavLink to="/admin" className={linkCls} onClick={() => setOpen(false)}>Admin</NavLink>}
@@ -71,6 +78,10 @@ export function AppShell() {
           <div className="hidden items-center gap-2 md:flex">
             {session ? (
               <>
+                <Link to="/me/notifications" className="relative rounded-md px-2 py-1.5 text-sm text-ink-700 hover:bg-black/5" aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}>
+                  <span aria-hidden>🔔</span>
+                  {unread > 0 && <span aria-hidden className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-rose-600 px-1 text-center text-[10px] font-semibold leading-4 text-white">{unread > 9 ? '9+' : unread}</span>}
+                </Link>
                 <Link to="/me/profile" className="max-w-40 truncate text-sm text-ink-700 hover:underline">{profile?.full_name ?? 'Profile'}</Link>
                 <button type="button" className="rounded-md px-2.5 py-1.5 text-sm text-ink-700 hover:bg-black/5"
                   onClick={async () => { await signOut(); navigate('/') }}>
@@ -80,7 +91,7 @@ export function AppShell() {
             ) : (
               <>
                 <Link to="/signin" className="rounded-md px-2.5 py-1.5 text-sm text-ink-700 hover:bg-black/5">Sign in</Link>
-                <Link to="/signup" className="rounded-md bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800">Join</Link>
+                <Link to="/join" className="rounded-md bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800">Join</Link>
               </>
             )}
           </div>
@@ -94,6 +105,7 @@ export function AppShell() {
             {nav}
             {session ? (
               <>
+                <NavLink to="/me/notifications" className={linkCls} onClick={() => setOpen(false)}>Notifications{unread ? ` (${unread})` : ''}</NavLink>
                 <NavLink to="/me/profile" className={linkCls} onClick={() => setOpen(false)}>Profile</NavLink>
                 <button type="button" className="rounded-md px-2.5 py-1.5 text-left text-sm text-ink-700"
                   onClick={async () => { setOpen(false); await signOut(); navigate('/') }}>Sign out</button>
@@ -101,7 +113,7 @@ export function AppShell() {
             ) : (
               <>
                 <NavLink to="/signin" className={linkCls} onClick={() => setOpen(false)}>Sign in</NavLink>
-                <NavLink to="/signup" className={linkCls} onClick={() => setOpen(false)}>Join</NavLink>
+                <NavLink to="/join" className={linkCls} onClick={() => setOpen(false)}>Join</NavLink>
               </>
             )}
           </nav>
@@ -113,7 +125,15 @@ export function AppShell() {
         </Suspense>
       </main>
       <footer className="border-t border-black/10 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-ink-500 sm:px-6">Worldkin Roster · Everyone is kin.</div>
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-ink-500 sm:px-6">
+          <span>Worldkin Roster · Everyone is kin.</span>
+          <nav aria-label="Footer" className="flex flex-wrap gap-4">
+            <Link className="hover:underline" to="/explore">Opportunities</Link>
+            <Link className="hover:underline" to="/organizations">Organizations</Link>
+            <Link className="hover:underline" to="/join">Join</Link>
+            <Link className="hover:underline" to="/me/complaints">Report a concern</Link>
+          </nav>
+        </div>
       </footer>
     </div>
   )

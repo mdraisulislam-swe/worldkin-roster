@@ -1,24 +1,32 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router'
-import { searchOpportunities, type SearchParams } from '../lib/api'
+import { useSearchParams } from 'react-router'
 import { Constants, type Enums } from '../lib/database.types'
-import { CAUSE_LABELS, MODE_LABELS, formatDateTime, spotsLabel, startsIn } from '../lib/format'
+import { CAUSE_LABELS, MODE_LABELS } from '../lib/format'
+import { COMPENSATION_LABELS, COMPENSATION_TYPES, searchOpportunities, type CompensationType, type OpportunitySearch, type SearchSort } from '../lib/platform'
 import { useNow } from '../lib/useNow'
-import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, TextField, Checkbox } from '../components/ui'
 import { toAppError } from '../lib/errors'
+import { CardSkeletons, OpportunityCardView } from '../components/cards'
+import { Button, Card, Checkbox, EmptyState, ErrorState, PageHeader, Select, TextField } from '../components/ui'
 
-/** Discovery (M05): full-text search + filters + sort + pagination, state kept in the URL. */
+const FILTER_KEYS = ['q', 'cause', 'country', 'city', 'mode', 'comp', 'skill', 'from', 'sort'] as const
+
+/** Discovery (M05): full-text search + filters + sort + pagination; state kept in the URL so results are shareable. */
 export function ExplorePage() {
   const [params, setParams] = useSearchParams()
   const page = Math.max(1, Number(params.get('page') ?? 1) || 1)
   const now = useNow()
-  const search: SearchParams = {
+  const from = params.get('from') ?? ''
+  const search: OpportunitySearch = {
     query: params.get('q') ?? '',
     cause: (params.get('cause') || undefined) as Enums<'cause_category'> | undefined,
     country: params.get('country') ?? '',
+    city: params.get('city') ?? '',
     mode: (params.get('mode') || undefined) as Enums<'opportunity_mode'> | undefined,
+    compensation: (params.get('comp') || undefined) as CompensationType | undefined,
+    skill: params.get('skill') ?? '',
+    startsAfter: from ? new Date(from).toISOString() : undefined,
     onlyOpen: params.get('open') === '1',
-    sort: (params.get('sort') as SearchParams['sort']) || 'soonest',
+    sort: (params.get('sort') as SearchSort) || 'soonest',
     page,
   }
   const q = useQuery({ queryKey: ['search', search], queryFn: () => searchOpportunities(search) })
@@ -26,31 +34,40 @@ export function ExplorePage() {
   function update(form: HTMLFormElement) {
     const f = new FormData(form)
     const next = new URLSearchParams()
-    for (const k of ['q', 'cause', 'country', 'mode', 'sort']) {
+    for (const k of FILTER_KEYS) {
       const v = String(f.get(k) ?? '').trim()
-      if (v) next.set(k, v)
+      if (v) next.set(k, k === 'country' ? v.toUpperCase() : v)
     }
     if (f.get('open')) next.set('open', '1')
     setParams(next)
   }
   const totalPages = q.data ? Math.max(1, Math.ceil(q.data.total / q.data.pageSize)) : 1
+  const activeFilters = FILTER_KEYS.filter((k) => k !== 'sort' && params.get(k)).length + (params.get('open') ? 1 : 0)
 
   return (
     <>
-      <PageHeader title="Explore opportunities" subtitle="Verified organizations looking for volunteers." />
+      <PageHeader title="Explore opportunities" subtitle="Voluntary, stipend-based and paid roles from verified organizations." />
       <Card className="mb-6">
-        <form className="grid gap-3 md:grid-cols-6" role="search" onSubmit={(e) => { e.preventDefault(); update(e.currentTarget) }}>
-          <div className="md:col-span-2"><TextField label="Search" name="q" defaultValue={search.query} placeholder="e.g. food, teaching, Dhaka" /></div>
+        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6" role="search" onSubmit={(e) => { e.preventDefault(); update(e.currentTarget) }}>
+          <div className="sm:col-span-2"><TextField label="Search" name="q" defaultValue={search.query} placeholder="e.g. food, teaching, translation" /></div>
           <Select label="Cause" name="cause" defaultValue={search.cause ?? ''}
             options={[{ value: '', label: 'All causes' }, ...Constants.public.Enums.cause_category.map((c) => ({ value: c, label: CAUSE_LABELS[c] }))]} />
+          <Select label="Type" name="comp" defaultValue={search.compensation ?? ''}
+            options={[{ value: '', label: 'Any type' }, ...COMPENSATION_TYPES.map((c) => ({ value: c, label: COMPENSATION_LABELS[c] }))]} />
           <Select label="Mode" name="mode" defaultValue={search.mode ?? ''}
             options={[{ value: '', label: 'Any' }, ...Constants.public.Enums.opportunity_mode.map((m) => ({ value: m, label: MODE_LABELS[m] }))]} />
-          <TextField label="Country" name="country" defaultValue={search.country} placeholder="BD" maxLength={2} />
           <Select label="Sort" name="sort" defaultValue={search.sort}
-            options={[{ value: 'soonest', label: 'Soonest shift' }, { value: 'newest', label: 'Newest' }, { value: 'most_open', label: 'Most open spots' }, { value: 'relevance', label: 'Relevance' }]} />
-          <div className="flex items-end gap-4 md:col-span-6">
+            options={[{ value: 'soonest', label: 'Soonest shift' }, { value: 'closing', label: 'Closing soon' }, { value: 'newest', label: 'Newest' }, { value: 'most_open', label: 'Most open spots' }, { value: 'relevance', label: 'Relevance' }]} />
+          <TextField label="Country" name="country" defaultValue={search.country} placeholder="BD" maxLength={2} hint="2-letter code" />
+          <TextField label="City" name="city" defaultValue={search.city} placeholder="Dhaka" />
+          <TextField label="Skill" name="skill" defaultValue={search.skill} placeholder="first aid" />
+          <TextField label="Available from" name="from" type="date" defaultValue={from} />
+          <div className="flex items-end gap-4 sm:col-span-2">
             <Checkbox label="Only with open spots" name="open" defaultChecked={search.onlyOpen} />
-            <Button type="submit">Apply</Button>
+          </div>
+          <div className="flex flex-wrap items-end gap-3 sm:col-span-2 lg:col-span-6">
+            <Button type="submit">Apply filters</Button>
+            {activeFilters > 0 && <Button type="button" variant="ghost" onClick={() => setParams(new URLSearchParams())}>Clear {activeFilters} filter{activeFilters === 1 ? '' : 's'}</Button>}
           </div>
         </form>
       </Card>
@@ -68,30 +85,14 @@ export function ExplorePage() {
         })}
       </nav>
 
-      {q.isPending && <LoadingState label="Finding opportunities" />}
+      {q.isPending && <CardSkeletons count={6} />}
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}
-      {q.data && q.data.rows.length === 0 && <EmptyState title="No opportunities match these filters">Try removing a filter.</EmptyState>}
+      {q.data && q.data.rows.length === 0 && <EmptyState title="No opportunities match these filters">Try removing a filter or widening the dates.</EmptyState>}
       {q.data && q.data.rows.length > 0 && (
         <>
           <p className="mb-3 text-sm text-ink-500" aria-live="polite">{q.data.total} result{q.data.total === 1 ? '' : 's'}</p>
           <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {q.data.rows.map((o) => (
-              <li key={o.id}>
-                <Card className="h-full">
-                  <p className="text-xs uppercase tracking-wide text-brand-700">{CAUSE_LABELS[o.cause]} · {MODE_LABELS[o.mode]}</p>
-                  <h2 className="mt-1 font-semibold"><Link className="hover:underline" to={`/opportunities/${o.id}`}>{o.title}</Link></h2>
-                  <p className="text-sm text-ink-500">{o.org_name}{o.city ? ` · ${o.city}` : ''}{o.country_code ? `, ${o.country_code}` : ''}</p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {o.next_shift_at && <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-800">{startsIn(o.next_shift_at, now)}</span>}
-                    {(() => { const l = spotsLabel(o.open_spots, o.upcoming_shifts); return l && <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${l.tone === 'warn' ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-800'}`}>{l.text}</span> })()}
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-900">Verified organization</span>
-                  </div>
-                  <p className="mt-2 text-sm">Next shift: {o.next_shift_at ? formatDateTime(o.next_shift_at) : 'none scheduled'}</p>
-                  <p className="text-sm">{o.open_spots} open spot{o.open_spots === 1 ? '' : 's'} across {o.upcoming_shifts} shift{o.upcoming_shifts === 1 ? '' : 's'}</p>
-                  {o.is_sensitive && <p className="mt-2 text-xs text-amber-800">Sensitive opportunity — visible to signed-in users only.</p>}
-                </Card>
-              </li>
-            ))}
+            {q.data.rows.map((o) => <li key={o.id}><OpportunityCardView o={o} now={now} /></li>)}
           </ul>
           <nav aria-label="Pagination" className="mt-6 flex items-center gap-3">
             <Button variant="secondary" disabled={page <= 1} onClick={() => { params.set('page', String(page - 1)); setParams(params) }}>Previous</Button>

@@ -5,17 +5,24 @@ import { createOpportunity, createShift, getOpportunity, getOpportunityShifts, u
 import { Constants, type Tables } from '../lib/database.types'
 import { toAppError } from '../lib/errors'
 import { CAUSE_LABELS, MODE_LABELS, formatShiftWindow, fromLocalInput } from '../lib/format'
-import { fieldErrors, opportunitySchema, shiftSchema } from '../lib/validation'
+import { fieldErrors, opportunityExtraSchema, opportunitySchema, shiftSchema } from '../lib/validation'
+import { COMPENSATION_LABELS, COMPENSATION_TYPES, SELECTION_LABELS, SELECTION_MODES, type OpportunityExtra } from '../lib/platform'
+import { toLocalInput } from '../lib/format'
 import { Alert, Button, Card, Checkbox, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge, TextArea, TextField } from '../components/ui'
 import { useDialog } from '../components/dialog'
 
 function readOpportunityForm(form: HTMLFormElement) {
   const f = new FormData(form)
-  return opportunitySchema.safeParse({
+  const base = opportunitySchema.safeParse({
     ...Object.fromEntries(f),
     requires_skill_match: f.get('requires_skill_match') === 'on',
     is_sensitive: f.get('is_sensitive') === 'on',
   })
+  const extra = opportunityExtraSchema.safeParse(Object.fromEntries(f))
+  if (!base.success || !extra.success) {
+    return { success: false as const, errors: { ...(extra.success ? {} : fieldErrors(extra.error)), ...(base.success ? {} : fieldErrors(base.error)) } }
+  }
+  return { success: true as const, data: { ...base.data, ...extra.data } }
 }
 
 export function OpportunityEditorPage() {
@@ -35,7 +42,7 @@ export function OpportunityEditorPage() {
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
     const publish = submitter?.value === 'publish'
     const parsed = readOpportunityForm(e.currentTarget)
-    if (!parsed.success) return setErrors(fieldErrors(parsed.error))
+    if (!parsed.success) return setErrors(parsed.errors)
     setErrors({}); setNotice(null); setBusy(true)
     try {
       if (isNew) {
@@ -63,6 +70,7 @@ export function OpportunityEditorPage() {
   if (!isNew && opp.isPending) return <LoadingState />
   if (!isNew && opp.isError) return <ErrorState message={toAppError(opp.error).message} onRetry={() => opp.refetch()} />
   const o = opp.data
+  const ox = o as (NonNullable<typeof o> & OpportunityExtra) | undefined
 
   return (
     <>
@@ -96,6 +104,21 @@ export function OpportunityEditorPage() {
             <Checkbox label="Volunteers must have at least one of these skills" name="requires_skill_match" defaultChecked={o?.requires_skill_match} />
             <TextArea label="Eligibility / requirements" name="requirements" defaultValue={o?.requirements ?? ''} error={errors.requirements} />
             <Checkbox label="Sensitive (conflict / high-risk): hide from visitors who are not signed in" name="is_sensitive" defaultChecked={o?.is_sensitive} />
+            <fieldset className="flex flex-col gap-4 rounded-md border border-black/10 p-3">
+              <legend className="px-1 text-sm font-semibold">Compensation and selection</legend>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Select label="Opportunity type" name="compensation_type" defaultValue={ox?.compensation_type ?? 'voluntary'} error={errors.compensation_type}
+                  options={COMPENSATION_TYPES.map((c) => ({ value: c, label: COMPENSATION_LABELS[c] }))} />
+                <TextField label="Compensation details" name="compensation_details" defaultValue={ox?.compensation_details ?? ''} error={errors.compensation_details}
+                  hint="Required for paid and stipend roles, e.g. USD 20/day for meals and transport" maxLength={500} />
+              </div>
+              <Select label="How volunteers are selected" name="selection_mode" defaultValue={ox?.selection_mode ?? 'open'} error={errors.selection_mode}
+                disabled={!isNew && o?.status !== 'draft'} hint={!isNew && o?.status !== 'draft' ? 'Locked once published (applications or sign-ups may exist).' : undefined}
+                options={SELECTION_MODES.map((m) => ({ value: m, label: SELECTION_LABELS[m] }))} />
+              {!isNew && o?.status !== 'draft' && <input type="hidden" name="selection_mode" value={ox?.selection_mode ?? 'open'} />}
+              <TextField label="Application deadline (application mode only)" name="application_deadline" type="datetime-local"
+                defaultValue={ox?.application_deadline ? toLocalInput(ox.application_deadline) : ''} error={errors.application_deadline} />
+            </fieldset>
             <div className="flex flex-wrap gap-2">
               <Button type="submit" value="draft" busy={busy} variant={isNew ? 'secondary' : 'primary'}>{isNew ? 'Save as draft' : 'Save changes'}</Button>
               {isNew && <Button type="submit" value="publish" busy={busy}>Save and publish</Button>}

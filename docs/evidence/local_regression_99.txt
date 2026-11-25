@@ -1,0 +1,110 @@
+applied: [
+  '20261124194202_wk01_types_tables.sql',
+  '20261124194253_wk02_helpers_triggers.sql',
+  '20261124194325_wk03_rls_grants.sql',
+  '20261124194532_wk04_rpc.sql',
+  '20261125135004_wk05_join_shift_volunteer_lock.sql',
+  '20261126000000_wk06_applications_platform.sql'
+]
+tables: 17 | rls on: 17 | policies: 28 | functions: 63 | triggers: 34
+PASS  SETUP   profiles auto-created for 10 users
+PASS  S3      metadata platform_role ignored at signup
+PASS  OPS1    operator can bootstrap first platform admin
+PASS  S2      volunteer cannot set own platform_role
+PASS  S2b     volunteer can edit own safe profile fields
+PASS  S2c     volunteer cannot edit another profile (0 rows)
+PASS  ORG1    create_organization returns ids
+PASS  ORG2    duplicate slug rejected
+PASS  ORG3    invalid slug rejected
+PASS  S10     pending org cannot publish
+PASS  ORG4    non-admin cannot review org
+PASS  S14     platform admin cannot review own org
+PASS  ORG5    admin verifies org1 and org2
+PASS  ORG6    invalid org transition verified->rejected
+PASS  ORG7    org admin cannot set org status directly
+PASS  MEM1    org admin invites coordinator (status invited)
+PASS  MEM1b   invitee accepts -> coordinator
+PASS  MEM2    re-invite of an existing member is harmless (already_member)
+PASS  MEM3    coordinator cannot invite members
+PASS  S15     cannot remove last org admin
+PASS  ENUM    unverified org cannot invite
+PASS  ENUM2   registered vs unregistered email: identical response shape/status
+PASS  ENUM3   invite does not create membership (no side channel)
+PASS  OPP1    coordinator creates draft opportunity
+PASS  OPP2    publish after verification
+PASS  SH1     coordinator creates shift (cap 1, waitlist 2)
+PASS  SH2     shift in the past rejected (API)
+PASS  S5a     org2 cannot create shift in org1
+PASS  SH3     capacity column not directly updatable
+PASS  C-JOIN  first volunteer confirmed
+PASS  C2      same idempotency key replays (no new row)
+PASS  C-DUP   duplicate join (new key) rejected
+PASS  C1a     next two are waitlisted #1, #2
+PASS  C1b     shift + waitlist full
+PASS  C1c     confirmed never exceeds capacity
+PASS  S9      direct insert into signups denied
+PASS  C3      overlapping shift rejected (RPC)
+PASS  C3b     exclusion constraint blocks overlap even without RPC
+PASS  C-KEY   idempotency key reused on another shift
+PASS  S-CAN   volunteer cannot cancel someone else
+PASS  C4      cancel promotes waitlist head (FIFO)
+PASS  C4b     repeat cancel is a no-op
+PASS  C4c     remaining waitlister moved to position 1
+PASS  C-STAFF staff cancel requires reason
+PASS  C7      capacity increase promotes waitlist
+PASS  C6      capacity below confirmed rejected
+PASS  S4a     other org cannot change capacity
+PASS  SH4     shift time frozen after signups
+PASS  S4b     org2 sees 0 signups of org1
+PASS  S5b     org2 update of org1 shift affects 0 rows
+PASS  S4c     org2 cannot read org1 roster
+PASS  S11     volunteer sees only own signups
+PASS  S11b    volunteer cannot read unrelated profiles
+PASS  S1a     anon cannot read signups
+PASS  S1b     anon cannot read profiles
+PASS  S1c     anon sees published opportunities only
+PASS  S8r     roster exposes no email/location columns
+PASS  S12     internal _promote_waitlist not callable
+PASS  S13a    anon cannot see sensitive opportunity
+PASS  S13b    anon search hides sensitive
+PASS  S13c    signed-in user can see sensitive
+PASS  C11a    no matching skill -> not eligible
+PASS  C11b    matching skill (case-insensitive) -> joins
+PASS  C11c    skill match cannot be required without listed skills
+PASS  C11d    eligibility notes length limited (1000)
+PASS  WL0a    waitlist_limit 0: first joiner confirmed
+PASS  WL0b    waitlist_limit 0: second joiner rejected, not waitlisted
+PASS  OPS2    operator can seed a PAST shift (demo history)
+PASS  S6      coordinator cannot verify own attendance
+PASS  C8      hours above duration rejected
+PASS  C8b     rollback: signup still confirmed after failed attendance
+PASS  ATT1    attendance recorded (1.5h)
+PASS  ATT2    attendance only once
+PASS  ATT3    other org cannot record attendance
+PASS  ATT4    no-show recorded
+PASS  S7a     API cannot update participation
+PASS  S7b     even operator cannot update participation
+PASS  S6b     CHECK blocks self-verification at table level
+PASS  M05a    my_impact verified hours = 1.5
+PASS  M05b    dashboard: attended 1, no_show 1, no-show 50%, hours 1.5
+PASS  ATT5    attendance before shift starts rejected
+PASS  S8a     API cannot delete audit logs
+PASS  S8b     operator cannot delete audit logs
+PASS  S8c     operator cannot truncate audit logs
+PASS  S16a    signup changes audited with actor
+PASS  S16b    role bootstrap audited
+PASS  S16c    coordinator cannot read audit log
+PASS  S16d    org admin reads only own org audit
+PASS  LC0     coordinator of org1 cannot close org2 opportunity (0 rows)
+PASS  LC2     closed -> published rejected
+PASS  C10     join on closed opportunity rejected
+PASS  M05c    search tolerates malformed query
+PASS  M05d    search finds by text with counts
+PASS  M05e    availability returns counts to anon
+PASS  SUS1    suspend verified org with reason
+PASS  SUS2    suspended org content hidden from public
+PASS  SUS3    cannot join shift of suspended org
+PASS  DEL1    deleting a user WITH history is blocked (history preserved)
+PASS  DEL2    deleting a user without history succeeds
+
+99/99 passed

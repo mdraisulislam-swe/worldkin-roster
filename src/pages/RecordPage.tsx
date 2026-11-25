@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { getMyImpact, getMyRecord } from '../lib/api'
 import { toAppError } from '../lib/errors'
 import { useNow } from '../lib/useNow'
 import { CAUSE_LABELS, formatDateTime } from '../lib/format'
 import { Button, EmptyState, ErrorState, LoadingState } from '../components/ui'
+import { VolunteerNav } from '../components/DashboardNav'
+import { ParticipationSection } from './VolunteerPages'
 
 /**
  * Printable "verified volunteer record": every entry was verified by
@@ -23,6 +24,8 @@ export function RecordPage() {
   const rows = records.data ?? []
 
   return (
+    <>
+    <VolunteerNav />
     <article className="mx-auto max-w-3xl rounded-lg border border-black/10 bg-white p-6 print:border-0 print:p-0">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -31,8 +34,7 @@ export function RecordPage() {
           <p className="text-sm text-ink-500">Generated {formatDateTime(new Date(now).toISOString())}</p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Link to="/me" className="rounded-md px-3 py-2 text-sm text-brand-700 hover:bg-brand-50">Back</Link>
-          <Button onClick={() => window.print()}>Print / save as PDF</Button>
+                    <Button onClick={() => window.print()}>Print / save as PDF</Button>
         </div>
       </div>
       {impact.data && (
@@ -70,5 +72,7 @@ export function RecordPage() {
         Each entry was verified by staff of the listed organization; volunteers cannot record or edit their own hours.
       </p>
     </article>
+    <ParticipationSection />
+    </>
   )
 }

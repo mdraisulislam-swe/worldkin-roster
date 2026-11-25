@@ -131,3 +131,19 @@ Root cause of `http://localhost:3000/#access_token=…`: the app already asked f
 | `/auth/confirmed` opened directly, signed out | "Confirm your email" + resend form |
 | Unit tests (`authRedirect.test.ts`) | redirect URL, open-redirect protection, error parsing, token-fragment detection — 29/29 total |
 | Live `worldkin-roster.vercel.app` (commit 332c678, before this fix) | key now correct (matches publishable key); `/signup`, `/signin`, `/explore`, `/login`, `/me` → **404** (vercel.json not deployed yet) |
+
+## 12. Applications platform — migration wk06 (26 Nov 2026, local only)
+
+Branch `feature/applications-platform`. **Not applied live** (awaiting approval); all results below are local.
+
+| Suite | Result | Evidence |
+|---|---|---|
+| wk06 suite (`supabase/tests/local-pglite/wk06_tests.mjs`) — organizations, privacy, opportunities, applications, offers, expiry, revoke/decline/reject/withdraw, direct-write denial, notifications, feedback, complaints, suspension, moderation, statistics, directory, search | **96/96** | `docs/evidence/local_wk06_tests.txt` |
+| Regression: original DB suite with wk01–wk06 | **99/99** | `docs/evidence/local_regression_99.txt` |
+| Demo seed with wk06 | 14/14 | local run |
+| Operator-path tamper tests T1–T4 | all blocked | local run |
+| Unit tests (incl. new validation tests) | 33/33 | `npm test` |
+| TypeScript / lint / build | 0 / 0 / OK | local |
+| Browser (production build vs live project without wk06) | new public pages render; missing RPCs degrade to "—"/error states; 375 px no overflow on home, join, sign-up, explore, organizations | manual run |
+
+Not testable locally: storage buckets/policies (`wk07`), real parallel transactions (PGlite is single-connection) — covered by `supabase/tests/live_applications_check.mjs` (C1 simultaneous last-seat acceptance, C2 no overbooking, C3 triple parallel acceptance of one offer) once wk06 is applied.

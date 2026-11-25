@@ -9,6 +9,7 @@ import { CAUSE_LABELS, formatShiftWindow } from '../lib/format'
 import { downloadIcs } from '../lib/calendar'
 import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Stat, StatusBadge } from '../components/ui'
 import { useDialog } from '../components/dialog'
+import { VolunteerNav } from '../components/DashboardNav'
 
 export function MyShiftsPage() {
   const { session, refresh } = useAuth()
@@ -39,8 +40,9 @@ export function MyShiftsPage() {
 
   return (
     <>
-      <PageHeader title="My shifts" subtitle="Your places, waitlists and verified volunteer hours."
-        actions={<Link to="/me/record" className="rounded-md border border-black/15 bg-white px-3.5 py-2 text-sm font-medium hover:bg-black/5">Verified record</Link>} />
+      <PageHeader title="Volunteer dashboard" subtitle="Your places, waitlists, attendance and verified volunteer hours."
+        actions={<Link to="/explore" className="rounded-md bg-brand-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-800">Find opportunities</Link>} />
+      <VolunteerNav />
       <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
 
       {invites.data && invites.data.length > 0 && (

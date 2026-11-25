@@ -438,3 +438,27 @@ Opportunity lifecycle transitions (draft→published→closed; closed→publishe
 3. Create test users; promote one to `platform_admin` via SQL (owner-approved, documented).
 4. Seed demo organizations, opportunities and shifts.
 5. Run the A03/A05 test suite and record evidence.
+
+## 11. Applications platform (migration wk06/wk07, 26 Nov 2026)
+
+Design rationale: `docs/DESIGN_DECISIONS.md`. Additive only; existing data untouched.
+
+| Object | Purpose | Access |
+|---|---|---|
+| `opportunities` + `compensation_type` (voluntary/stipend/paid), `compensation_details` (required unless voluntary), `selection_mode` (open/application), `application_deadline`, `moderation_*` | public listing data | existing RLS; moderation columns not client-writable |
+| `profiles` + education, interests, languages, availability, experience, avatar_url, suspended_* | richer volunteer profile; suspension | suspension columns not client-writable |
+| `profile_private(phone)` | private contact | owner + platform admin |
+| `organizations` + org_type, city, phone, official_email, logo_url | public organization details | existing RLS |
+| `organization_private` | address, registration ID, representative, document paths | org members read, org admins write, platform admins read |
+| `applications` | one active per volunteer per opportunity (partial unique) | own / org members / platform admin; writes via RPC only |
+| `application_notes` | internal review notes | org members only |
+| `offers` | 72-hour offers for a specific shift; one pending per application; accepted ⇒ signup | own / org members / platform admin; RPC only |
+| `complaints` | private reports | reporter + platform admin; not audited under org_id (no leak to the organization) |
+| `feedback` | one per verified participation; moderated | author + platform admin; public via `org_feedback()` (first name only) |
+| `notifications` | written only by server functions | own; only `read_at` writable |
+
+**RPCs:** `apply_to_opportunity`, `withdraw_application`, `review_application`, `send_offer`, `revoke_offer`, `accept_offer`, `decline_offer`, `my_applications`, `org_applications`, `my_participation`, `submit_feedback`, `org_feedback`, `moderate_feedback`, `submit_complaint`, `respond_complaint`, `admin_set_suspension`, `admin_users`, `admin_moderate_opportunity`, `admin_overview`, `platform_stats`, `list_organizations`; `search_opportunities` and `create_organization` extended. Internal: `_join_shift_core` (booking core shared by `join_shift` and `accept_offer`), `_expire_offers` (SKIP LOCKED), `_notify`, `_notify_org_admins`, `_assert_active`.
+
+**Lock order:** volunteer profile → application → offer → shift → signup. Org-side actions take application → offer; list reads expire offers with SKIP LOCKED, so they never wait on a decision in progress.
+
+**Storage (wk07):** `avatars` (public; write only into one's own or one's administered organization's folder) and `org-docs` (private; org admins upload, org members and platform admins read through short-lived signed URLs; no delete).

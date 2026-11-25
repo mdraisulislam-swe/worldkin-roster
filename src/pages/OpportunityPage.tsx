@@ -9,6 +9,9 @@ import { useNow } from '../lib/useNow'
 import { CAUSE_LABELS, MODE_LABELS, formatShiftWindow, matchingSkills, shiftHours, startsIn } from '../lib/format'
 import { Alert, Button, CapacityMeter, Card, EmptyState, ErrorState, LoadingState, PageHeader, StatusBadge } from '../components/ui'
 import { useDialog } from '../components/dialog'
+import { ApplyPanel } from '../components/ApplyPanel'
+import { CompensationBadge } from '../components/cards'
+import { COMPENSATION_LABELS, type OpportunityExtra } from '../lib/platform'
 
 export function OpportunityPage() {
   const { id = '' } = useParams()
@@ -46,7 +49,8 @@ export function OpportunityPage() {
 
   if (opp.isPending) return <LoadingState />
   if (opp.isError) return <ErrorState message={toAppError(opp.error).message} onRetry={() => opp.refetch()} />
-  const o = opp.data
+  const o = opp.data as typeof opp.data & OpportunityExtra
+  const byApplication = o.selection_mode === 'application'
   const matches = profile ? matchingSkills(profile.skills, o.skills_wanted) : []
   const place = [o.city, o.country_code].filter(Boolean).join(', ')
 
@@ -72,6 +76,14 @@ export function OpportunityPage() {
             <h2 className="mb-2 font-semibold">About this opportunity</h2>
             <p className="whitespace-pre-line text-ink-700">{o.description}</p>
             {o.is_sensitive && <div className="mt-4"><Alert tone="warning">Sensitive opportunity. Location details are shared only by the coordinator after confirmation.</Alert></div>}
+          </Card>
+          <Card>
+            <h2 className="mb-2 flex flex-wrap items-center gap-2 font-semibold">Compensation <CompensationBadge type={o.compensation_type} /></h2>
+            {o.compensation_type === 'voluntary'
+              ? <p className="text-sm text-ink-700">This is an unpaid, voluntary role.</p>
+              : <p className="text-sm text-ink-700"><span className="font-medium">{COMPENSATION_LABELS[o.compensation_type]}:</span> {o.compensation_details}</p>}
+            <p className="mt-2 text-sm text-ink-500">{byApplication ? 'Selection by application: the organization reviews applicants and sends offers.' : 'Open sign-up: join any shift with free seats.'}</p>
+            {o.moderation_reason && <div className="mt-3"><Alert tone="warning">Closed by Worldkin moderators: {o.moderation_reason}</Alert></div>}
           </Card>
           {(o.skills_wanted.length > 0 || o.requirements) && (
             <Card>
@@ -108,6 +120,7 @@ export function OpportunityPage() {
         </div>
         <section aria-labelledby="shifts-h">
           <h2 id="shifts-h" className="mb-3 text-lg font-semibold">Shifts</h2>
+          {byApplication && o.status === 'published' && <ApplyPanel opportunityId={o.id} deadline={o.application_deadline} now={now} />}
           <div aria-live="polite">{notice && <div className="mb-3"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
           {shifts.isPending && <LoadingState label="Loading shifts" />}
           {shifts.isError && <ErrorState message={toAppError(shifts.error).message} onRetry={() => shifts.refetch()} />}
@@ -128,6 +141,8 @@ export function OpportunityPage() {
                       {s.my_status && <StatusBadge status={s.my_status} />}
                       {s.status === 'cancelled' ? <StatusBadge status="cancelled" /> : started ? (
                         <span className="text-xs text-ink-500">Started</span>
+                      ) : byApplication && !s.my_status ? (
+                        <span className="text-xs text-ink-500">Places are assigned through offers</span>
                       ) : !session ? (
                         <Link to={`/signin?next=${encodeURIComponent(location.pathname)}`} className="text-sm text-brand-700 underline">Sign in to join</Link>
                       ) : active ? (

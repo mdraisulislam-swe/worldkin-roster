@@ -166,6 +166,21 @@ const STATUS_TONE: Record<string, string> = {
   no_show: 'bg-rose-100 text-rose-900',
   rejected: 'bg-rose-100 text-rose-900',
   suspended: 'bg-rose-100 text-rose-900',
+  accepted: 'bg-emerald-100 text-emerald-900',
+  active: 'bg-emerald-100 text-emerald-900',
+  resolved: 'bg-emerald-100 text-emerald-900',
+  selected: 'bg-sky-100 text-sky-900',
+  submitted: 'bg-slate-100 text-slate-800',
+  under_review: 'bg-amber-100 text-amber-900',
+  in_review: 'bg-amber-100 text-amber-900',
+  open: 'bg-amber-100 text-amber-900',
+  withdrawn: 'bg-slate-100 text-slate-800',
+  declined: 'bg-slate-100 text-slate-800',
+  dismissed: 'bg-slate-100 text-slate-800',
+  hidden: 'bg-slate-100 text-slate-800',
+  expired: 'bg-rose-100 text-rose-900',
+  revoked: 'bg-rose-100 text-rose-900',
+  'platform admin': 'bg-violet-100 text-violet-900',
 }
 /** Status is always shown as text + colour (never colour alone). */
 export function StatusBadge({ status }: { status: string }) {

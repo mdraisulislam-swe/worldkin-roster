@@ -16,9 +16,9 @@ When a disaster or a food drive needs people, coordinators juggle spreadsheets a
 
 | Module | Who | What they can do |
 |---|---|---|
-| Volunteer | anyone who signs up | search and filter opportunities, join a shift or its waitlist, cancel, add to calendar, see a verified record of hours by cause |
-| Organization | org admins and coordinators | create an organization (reviewed before going live), invite team members by consent, publish opportunities and shifts, change capacity, manage the roster, mark attendance, see a dashboard and audit log |
-| Platform admin | Worldkin operators | verify, reject or suspend organizations with a reason, read the platform audit log |
+| Volunteer | anyone who joins as a volunteer | rich profile (skills, languages, availability, photo; phone kept private), search and filter voluntary / stipend-based / paid opportunities, join open shifts or **apply**, accept or decline 72-hour **offers**, withdraw, notifications, verified hours, printable certificates, feedback after verified participation, private complaints |
+| Organization | org admins and coordinators | register with contact details and private verification documents (pending until verified), publish opportunities with compensation and selection mode, review applicants (no contact data exposed), private review notes, select/reject, send/revoke offers for a specific shift, manage shifts, roster and attendance, dashboard, feedback, audit log |
+| Platform admin | Worldkin operators (no public sign-up) | platform overview, verify/reject/suspend organizations after reviewing documents, suspend users, moderate opportunities and feedback, resolve private complaints, audit log |
 
 ## Architecture
 
@@ -40,6 +40,7 @@ The browser never holds a secret key; every permission is enforced by the databa
 - Idempotency key (`UNIQUE(volunteer_id, idempotency_key)`) makes retries safe.
 - Partial unique index: one active place per volunteer per shift. GiST exclusion constraint: no overlapping commitments, even across different shifts.
 - Proven live: 10 parallel joins for 1 seat → exactly 1 confirmed, 3 waitlisted, 6 rejected (six runs).
+- Offer acceptance books through the same core as joining, under the lock order volunteer → application → offer → shift → signup; acceptance is idempotent and an expired or revoked offer can never be accepted (expiry computed by the server).
 
 ### A03 — security and access control
 - Five layers: column grants → RLS → definer RPCs → guard triggers → constraints.
@@ -47,6 +48,17 @@ The browser never holds a secret key; every permission is enforced by the databa
 - No self-verification of hours (RPC check **and** CHECK constraint); platform admins cannot review their own organization.
 - Consent-based invites that do not reveal whether an email is registered.
 - Proven live: 36 checks across anonymous, volunteer, coordinator and org-admin roles.
+
+## Database migrations
+
+Apply in filename order to the Worldkin project only (`supabase/migrations/`): wk01 types/tables · wk02 helpers/triggers · wk03 RLS/grants · wk04 RPCs · wk05 volunteer lock (deadlock fix) · **wk06 applications platform** · **wk07 storage buckets/policies**. All are additive.
+
+Local verification without touching any project (PostgreSQL 17 in-process via PGlite; wk07 is skipped locally because PGlite has no storage schema):
+
+```bash
+node supabase/tests/local-pglite/tests.mjs supabase/migrations
+node supabase/tests/local-pglite/wk06_tests.mjs supabase/migrations
+```
 
 ## Run locally
 
@@ -82,4 +94,5 @@ Framework Vite, build `npm run build`, output `dist`. Set both variables above f
 ## Known limitations
 
 - Email delivery uses Supabase's built-in mailer (rate limited); production use needs a custom SMTP provider.
-- Notifications, chat, payments and maps are out of scope for this MVP.
+- Notifications are in-app only (no email/SMS); chat, payments and maps are out of scope.
+- Compensation is information shown to volunteers; Worldkin does not process payments.
