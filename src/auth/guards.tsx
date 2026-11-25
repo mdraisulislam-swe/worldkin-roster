@@ -20,7 +20,12 @@ export function RequireOrgRole({ children, adminOnly = false }: { children: Reac
   const role = roleIn(orgId)
   const allowed = adminOnly ? role === 'org_admin' : role !== null
   if (!allowed && !isPlatformAdmin) {
-    return <ErrorState title="No access" message="You are not a member of this organization." />
+    return (
+      <ErrorState
+        title="No access"
+        message={role && adminOnly ? 'Only organization admins can open this page.' : 'You are not a member of this organization.'}
+      />
+    )
   }
   return <>{children}</>
 }

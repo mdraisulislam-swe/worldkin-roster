@@ -111,9 +111,10 @@ export function OpportunityPage() {
           <div aria-live="polite">{notice && <div className="mb-3"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
           {shifts.isPending && <LoadingState label="Loading shifts" />}
           {shifts.isError && <ErrorState message={toAppError(shifts.error).message} onRetry={() => shifts.refetch()} />}
-          {shifts.data?.length === 0 && <EmptyState title="No shifts scheduled yet" />}
+          {shifts.data && shifts.data.filter((s) => s.status !== 'cancelled' || s.my_status).length === 0 && <EmptyState title="No shifts scheduled yet" />}
           <ul className="flex flex-col gap-3">
-            {shifts.data?.map((s) => {
+            {/* Hide cancelled shifts unless the viewer had a place on them. */}
+            {shifts.data?.filter((s) => s.status !== 'cancelled' || s.my_status).map((s) => {
               const started = new Date(s.starts_at).getTime() <= now
               const active = s.my_status === 'confirmed' || s.my_status === 'waitlisted'
               return (

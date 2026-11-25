@@ -58,7 +58,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
       <dialog
         ref={ref}
         aria-labelledby="wk-dialog-title"
-        className="w-[min(32rem,calc(100vw-2rem))] rounded-lg border border-black/10 p-0 shadow-xl backdrop:bg-black/40"
+        className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-lg border border-black/10 p-0 shadow-xl backdrop:bg-black/40"
         onCancel={(e) => { e.preventDefault(); close(false) }}
       >
         {opts && (

@@ -44,7 +44,7 @@ export function OrgPage() {
         <h2 id="dash-h" className="mb-3 text-lg font-semibold">Overview</h2>
         {dash.isError && <ErrorState message={toAppError(dash.error).message} onRetry={() => dash.refetch()} />}
         {dash.data && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label="Upcoming shifts" value={dash.data.upcoming_shifts} />
             <Stat label="Fill rate" value={`${Number(dash.data.fill_rate_pct)}%`} />
             <Stat label="Verified hours" value={Number(dash.data.verified_hours)} />
@@ -63,7 +63,7 @@ export function OrgPage() {
         {opps.isError && <ErrorState message={toAppError(opps.error).message} onRetry={() => opps.refetch()} />}
         {opps.data?.length === 0 && <EmptyState title="No opportunities yet">Create the first one to start recruiting volunteers.</EmptyState>}
         <ul className="flex flex-col gap-2">
-          {opps.data?.map((op) => {
+          {[...(opps.data ?? [])].sort((a, b) => Number(a.status === 'closed') - Number(b.status === 'closed')).map((op) => {
             const upcoming = op.shifts.filter((s) => s.status === 'scheduled' && new Date(s.starts_at).getTime() > now).length
             return (
               <li key={op.id}>

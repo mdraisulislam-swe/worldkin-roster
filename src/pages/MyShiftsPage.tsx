@@ -64,7 +64,7 @@ export function MyShiftsPage() {
         {impact.isError && <ErrorState message={toAppError(impact.error).message} onRetry={() => impact.refetch()} />}
         {impact.data && (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Stat label="Verified hours" value={Number(impact.data.verified_hours)} />
               <Stat label="Shifts attended" value={impact.data.shifts_attended} />
               <Stat label="Upcoming (confirmed)" value={impact.data.upcoming_confirmed} />
