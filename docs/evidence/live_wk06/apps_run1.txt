@@ -1,0 +1,26 @@
+# wk06 applications & offers (live)
+# run at 2026-11-25T19:23:44.384Z against https://ekkvwgohpzliwbmjnrth.supabase.co
+
+PASS  SETUP stipend application opportunity + 2 shifts (capacity 1) created via API
+PASS  L1    direct join refused: WK_APPLICATION_REQUIRED
+PASS  L2    four volunteers applied
+PASS  L3    5 parallel applications → exactly 1 row
+PASS  L4    volunteer sees only own applications
+PASS  L5    volunteer cannot list organization applicants
+PASS  L6    anonymous cannot read applications
+PASS  L7    coordinator lists applicants without phone/email/address
+PASS  L8    two offers for the same 1-seat shift
+PASS  C1    simultaneous acceptance for the last seat → 1 confirmed + 1 waitlisted
+PASS  C2    no overbooking (confirmed = capacity = 1)
+PASS  C3    triple parallel acceptance → all succeed, one non-replayed, one signup
+PASS  L9    revoked offer cannot be accepted
+PASS  L10   rejected volunteer sees status and reason
+PASS  S1    another volunteer cannot accept someone else’s offer
+PASS  S2    direct insert into applications is denied
+PASS  S3    internal booking core is not callable through the API
+PASS  S4    volunteer reads no private review notes
+PASS  N1    offer notification delivered to the volunteer
+PASS  ST1   anonymous platform statistics
+PASS  CLEAN test shifts cancelled and test opportunity closed
+
+ALL PASSED

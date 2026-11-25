@@ -1,0 +1,18 @@
+# A05 concurrency check (live)
+# run at 2026-11-25T19:19:40.739Z against https://ekkvwgohpzliwbmjnrth.supabase.co
+
+PASS  SETUP fixtures created through the API (opportunity + 3 shifts)
+PASS  C1a   exactly 1 confirmed out of 10 parallel joins
+PASS  C1b   exactly 3 waitlisted
+PASS  C1c   waitlist positions are 1,2,3 (FIFO, no gaps)
+PASS  C1d   remaining 6 rejected with WK_SHIFT_FULL
+PASS  C1e   database state: confirmed=1 <= capacity, waitlisted=3 <= limit
+PASS  C2a   all 5 identical requests succeed
+PASS  C2b   only one signup row created
+PASS  C2c   exactly one non-replayed response
+PASS  C3a   exactly one of two overlapping joins succeeds
+PASS  C3b   the other is WK_SCHEDULE_CONFLICT
+PASS  C4    cancel promotes the waitlist head
+PASS  CLEAN fixtures cancelled and test opportunity closed
+
+ALL PASSED

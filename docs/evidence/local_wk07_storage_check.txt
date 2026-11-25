@@ -1,0 +1,32 @@
+PASS  A1    wk07 applies cleanly
+PASS  A2    applying wk07 twice fails atomically (policies already exist)
+PASS  A3    buckets created once with limits
+PASS  A4    helpers run as SECURITY INVOKER
+PASS  A5    anonymous cannot execute the helpers
+PASS  D1    org admin uploads into own organization folder
+PASS  D2    coordinator cannot upload documents
+PASS  D3    org admin cannot upload into another organization
+PASS  D4    nobody can put org-docs into a personal folder
+PASS  D5    anonymous cannot upload
+PASS  D6    coordinator of the organization can read the document
+PASS  D7    platform admin can read the document
+PASS  D8    other organization admin cannot read it
+PASS  D9    volunteer cannot read it
+PASS  D10   anonymous cannot read it
+PASS  D11   documents cannot be deleted (0 rows)
+PASS  D12   documents cannot be moved/renamed (0 rows)
+PASS  D13   odd paths never error, just deny
+PASS  V1    volunteer uploads own avatar
+PASS  V2    volunteer cannot write into another user folder
+PASS  V3    org admin uploads organization logo
+PASS  V4    coordinator cannot replace organization logo
+PASS  V5    owner sees own avatar row; others and anonymous cannot list it
+PASS  V6    others cannot delete someone’s avatar
+PASS  V7    owner can delete own avatar (test cleanup works)
+PASS  R1    rollback runs; non-empty buckets are kept
+PASS  R2    rollback removed all wk07 policies and helpers
+PASS  R3    after rollback signed-in users see no stored objects (deny by default)
+PASS  R4    rollback is re-runnable and removes empty buckets
+PASS  R5    wk07 applies again after rollback
+
+30/30 passed

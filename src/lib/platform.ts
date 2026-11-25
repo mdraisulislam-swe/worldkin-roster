@@ -130,10 +130,18 @@ export async function getMyPhone(userId: string) {
   const list = await rows<{ phone: string | null }>(raw().from('profile_private').select('phone').eq('id', userId).limit(1))
   return list[0]?.phone ?? null
 }
-export async function saveMyPhone(userId: string, phone: string | null) {
-  const { error } = await raw().from('profile_private').upsert({ id: userId, phone }, { onConflict: 'id' })
-  if (error) throw toAppError(error)
+/** Update-or-insert without touching key columns (users may not update keys). */
+async function saveOwnRow(table: string, key: string, id: string, values: Record<string, unknown>) {
+  const upd = await raw().from(table).update(values).eq(key, id).select(key)
+  if (upd.error) throw toAppError(upd.error)
+  if ((upd.data ?? []).length > 0) return
+  const ins = await raw().from(table).insert({ [key]: id, ...values })
+  if (!ins.error) return
+  if ((ins.error as { code?: string }).code !== '23505') throw toAppError(ins.error)
+  const again = await raw().from(table).update(values).eq(key, id) // a parallel save created the row first
+  if (again.error) throw toAppError(again.error)
 }
+export const saveMyPhone = (userId: string, phone: string | null) => saveOwnRow('profile_private', 'id', userId, { phone })
 export async function updateProfileFull(userId: string, values: Record<string, unknown>) {
   const { error } = await raw().from('profiles').update(values).eq('id', userId)
   if (error) throw toAppError(error)
@@ -159,10 +167,7 @@ export async function getOrgPrivate(orgId: string) {
   const list = await rows<OrgPrivate>(raw().from('organization_private').select('*').eq('org_id', orgId).limit(1))
   return list[0] ?? null
 }
-export async function saveOrgPrivate(orgId: string, v: Omit<OrgPrivate, 'org_id'>) {
-  const { error } = await raw().from('organization_private').upsert({ org_id: orgId, ...v }, { onConflict: 'org_id' })
-  if (error) throw toAppError(error)
-}
+export const saveOrgPrivate = (orgId: string, v: Omit<OrgPrivate, 'org_id'>) => saveOwnRow('organization_private', 'org_id', orgId, v)
 export async function updateOrganizationPublic(orgId: string, v: Record<string, unknown>) {
   const { error } = await raw().from('organizations').update(v).eq('id', orgId)
   if (error) throw toAppError(error)

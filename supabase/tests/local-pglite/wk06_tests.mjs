@@ -289,6 +289,27 @@ check('C4b', 'the application returns to under review',
 check('C4c', 'the volunteer is notified',
   val(await op(`select count(*)::int from public.notifications where user_id = $1 and title = 'An offered shift was cancelled'`, [uid.admin])) === 1)
 
+// ---- private-row saves: the SQL the app sends (PostgREST upsert vs update-then-insert) ----
+const orgC = val(await op(`insert into public.organizations (name, slug, cause, country_code, status, created_by) values ('Org C', 'org-c', 'health', 'BD', 'verified', $1) returning id`, [uid.o1]))
+await op(`insert into public.org_members (org_id, user_id, role) values ($1, $2, 'org_admin')`, [orgC, uid.o1])
+// PostgREST upsert = INSERT ... ON CONFLICT DO UPDATE SET <every sent column>, including the key.
+expectErr('UP1', 'old upsert pattern is refused for organization_private (key column not updatable)',
+  await as('o1', `insert into public.organization_private (org_id, address) values ($1, 'Road 9') on conflict (org_id) do update set org_id = excluded.org_id, address = excluded.address`, [orgC]), 'permission denied')
+const u1 = await as('o1', `update public.organization_private set address = 'Road 9' where org_id = $1 returning org_id`, [orgC])
+const i1 = await as('o1', `insert into public.organization_private (org_id, address) values ($1, 'Road 9')`, [orgC])
+const u2 = await as('o1', `update public.organization_private set address = 'Road 10' where org_id = $1 returning org_id`, [orgC])
+check('UP2', 'fixed save: first update finds no row, insert creates it, next update changes it',
+  u1.ok && u1.rows.length === 0 && i1.ok && u2.ok && u2.rows.length === 1 &&
+  val(await op(`select address from public.organization_private where org_id = $1`, [orgC])) === 'Road 10', { u1, i1, u2 })
+expectErr('UP3', 'old upsert pattern is refused for profile_private too',
+  await as('v3', `insert into public.profile_private (id, phone) values ($1, '+880 1700 000001') on conflict (id) do update set id = excluded.id, phone = excluded.phone`, [uid.v3]), 'permission denied')
+const p1 = await as('v3', `update public.profile_private set phone = '+880 1700 000001' where id = $1 returning id`, [uid.v3])
+const p2 = await as('v3', `insert into public.profile_private (id, phone) values ($1, '+880 1700 000001')`, [uid.v3])
+const p3 = await as('v3', `update public.profile_private set phone = '+880 1700 000002' where id = $1 returning id`, [uid.v3])
+check('UP4', 'fixed phone save works: update(0) -> insert -> update(1)', p1.ok && p1.rows.length === 0 && p2.ok && p3.ok && p3.rows.length === 1, { p1, p2, p3 })
+expectErr('UP5', 'a second insert for the same key is a unique violation (the retry path)',
+  await as('v3', `insert into public.profile_private (id, phone) values ($1, '+880 1700 000003')`, [uid.v3]), 'duplicate key')
+
 // ---- report -------------------------------------------------------------------
 for (const r of results) console.log(`${r.pass ? 'PASS' : 'FAIL'}  ${r.id.padEnd(6)} ${r.desc}${r.pass ? '' : '  -> ' + r.detail}`);
 const passed = results.filter(r => r.pass).length;

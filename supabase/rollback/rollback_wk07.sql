@@ -10,6 +10,7 @@
 drop policy if exists wk_avatars_insert  on storage.objects;
 drop policy if exists wk_avatars_update  on storage.objects;
 drop policy if exists wk_avatars_delete  on storage.objects;
+drop policy if exists wk_avatars_select_own on storage.objects;
 drop policy if exists wk_org_docs_insert on storage.objects;
 drop policy if exists wk_org_docs_select on storage.objects;
 drop function if exists public.storage_folder_writable(text);

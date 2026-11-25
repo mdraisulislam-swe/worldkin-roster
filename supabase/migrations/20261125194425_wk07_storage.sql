@@ -14,11 +14,13 @@ on conflict (id) do nothing;
 
 -- True when the first folder of an object path belongs to the caller: their own
 -- user id, or an organization they administer. Never errors on odd input.
+-- SECURITY INVOKER: runs with the caller's rights; it only calls helpers that
+-- are already executable by signed-in users (is_org_admin / is_org_member).
 create or replace function public.storage_folder_writable(p_folder text)
 returns boolean
 language plpgsql
 stable
-security definer
+security invoker
 set search_path = ''
 as $$
 begin
@@ -39,7 +41,7 @@ create or replace function public.storage_org_doc_readable(p_folder text)
 returns boolean
 language plpgsql
 stable
-security definer
+security invoker
 set search_path = ''
 as $$
 begin
@@ -60,6 +62,10 @@ create policy wk_avatars_update on storage.objects for update to authenticated
   using (bucket_id = 'avatars' and public.storage_folder_writable((storage.foldername(name))[1]))
   with check (bucket_id = 'avatars' and public.storage_folder_writable((storage.foldername(name))[1]));
 create policy wk_avatars_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'avatars' and public.storage_folder_writable((storage.foldername(name))[1]));
+-- Storage needs SELECT for delete/upsert; owners may see only their own folder
+-- (anonymous listing stays impossible; public URLs do not need this policy).
+create policy wk_avatars_select_own on storage.objects for select to authenticated
   using (bucket_id = 'avatars' and public.storage_folder_writable((storage.foldername(name))[1]));
 
 -- org-docs: private. Org admins upload into their organization's folder;

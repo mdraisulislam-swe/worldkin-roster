@@ -4,7 +4,7 @@ applied: [
   '20261124194325_wk03_rls_grants.sql',
   '20261124194532_wk04_rpc.sql',
   '20261125135004_wk05_join_shift_volunteer_lock.sql',
-  '20261126000000_wk06_applications_platform.sql'
+  '20261125191231_wk06_applications_platform.sql'
 ]
 tables: 17 | rls on: 17 | policies: 28 | functions: 65 | triggers: 35
 PASS  ORG1   extended create_organization returns an id
@@ -112,5 +112,10 @@ PASS  C2c    suspended user is told the reason by notification
 PASS  C4a    cancelling a shift revokes its pending offer
 PASS  C4b    the application returns to under review
 PASS  C4c    the volunteer is notified
+PASS  UP1    old upsert pattern is refused for organization_private (key column not updatable)
+PASS  UP2    fixed save: first update finds no row, insert creates it, next update changes it
+PASS  UP3    old upsert pattern is refused for profile_private too
+PASS  UP4    fixed phone save works: update(0) -> insert -> update(1)
+PASS  UP5    a second insert for the same key is a unique violation (the retry path)
 
-105/105 passed
+110/110 passed

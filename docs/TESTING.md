@@ -161,3 +161,22 @@ Production read-only review findings and fixes (nothing applied to production):
 
 Totals: wk06 suite **105/105**, regression **99/99**, seed 14/14, tamper T1–T4 blocked, rollback 3/3, unit 33/33, tsc/lint 0, build OK. Evidence: `docs/evidence/local_wk06_tests.txt`, `local_regression_99.txt`, `local_rollback_check.txt`.
 Not provable locally: storage policies (wk07) and Supabase's own `apply_migration` transaction handling.
+
+## 14. Production: wk06 and wk07 applied and verified (25 Nov 2026, UTC)
+
+Owner-approved, applied separately. Production `supabase_migrations.schema_migrations` stores exactly the committed files (MD5 `cb489c2f…` wk06, `aecd5f5b…` wk07; identical length). Post-apply catalog fingerprints (65 functions, constraints, 28 public policies, 34 triggers, 6 storage policies) equal a local build. Pre-existing rows unchanged (MD5 of profiles, organizations, opportunities, signups identical before/after). Security Advisor: no ERROR; WARN 0028 = 9, 0029 = 43 (intentional RPC entry points), wk07 adds none.
+
+| Live suite (after wk06) | Result | Evidence |
+|---|---|---|
+| A03 `live_security_check` | 20 PASS, 1 SKIP (L19 needs Founder sign-in) | `docs/evidence/live_wk06/security.txt` |
+| A05 `concurrency_check` × 3 | 13/13 each (run 3 first hit Auth HTTP 429 before any test; re-run after the window) | `a05_run1-3.txt` |
+| `live_applications_check` × 3 | 21/21 each — apply, duplicate-proof parallel apply, privacy, offers, **simultaneous last-seat acceptance → 1 confirmed + 1 waitlisted**, triple parallel acceptance → 1 signup, revoke, reject reason, direct-write denial | `apps_run1-3.txt` |
+| Post-test consistency | 0 overbooked shifts, 0 waitlist overflows, 0 accepted-offer/signup mismatches, 0 duplicate active applications/signups | read-only SQL |
+
+| Live storage (after wk07) | Result | Evidence |
+|---|---|---|
+| S1–S13 (upload/read isolation per role, no deletes, MIME limits, own-folder avatars, no anonymous listing) | 13 PASS | `docs/evidence/live_wk07/storage_run1.txt` |
+| S14 C1 spoofed document path | first run tested via upsert (refused by column grants, wrong reason); re-check with plain insert: PASS (HTTP 400, CHECK `organization_private_docs_in_own_folder`) | `s14_recheck.txt` |
+| S15 avatar cleanup | delete succeeded (row removed; origin returns 400); public URL briefly served from CDN cache — test now checks the origin | storage row query |
+
+Finding fixed: the app's `saveOrgPrivate` / `saveMyPhone` used upsert, which PostgREST turns into `ON CONFLICT DO UPDATE SET <key>` — refused because users may not update key columns. Replaced by update → insert → (retry update). Local proof UP1–UP5 in `wk06_tests.mjs` (110/110). The one test PDF was deleted by the owner in the Dashboard.
