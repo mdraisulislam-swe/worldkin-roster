@@ -56,7 +56,7 @@ export function ProfilePage() {
     <>
       <PageHeader title="Profile & settings" subtitle={<>Signed in as {session?.user.email} · {profile.platform_role === 'platform_admin' ? 'platform admin' : 'volunteer'}</>} />
       {memberships.length === 0 && <VolunteerNav />}
-      {p.suspended_at && <div className="mb-4"><Alert tone="error">Your account is suspended{p.suspended_reason ? `: ${p.suspended_reason}` : ''}. You cannot join, apply or accept offers.</Alert></div>}
+      {p.suspended_at && <div className="mb-4"><Alert tone="error">Your account is suspended, so you cannot join, apply or accept offers. The reason is in your <Link className="underline" to="/me/notifications">notifications</Link>.</Alert></div>}
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>

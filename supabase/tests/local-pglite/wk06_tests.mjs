@@ -263,6 +263,32 @@ check('ST4', 'skill filter (case-insensitive) with closing-soon sort', sk.rows?.
 expectErr('ST5', 'anonymous cannot read admin overview', await anon(`select public.admin_overview()`), 'permission denied');
 check('ST6', 'admin overview counts', (await as('admin', `select public.admin_overview() o`)).rows?.[0]?.o?.complaints_open === 0);
 
+// ---- review corrections (C1, C2, C4) --------------------------------------------
+expectErr('C1a', 'document path in another organization’s folder is rejected',
+  await as('o1', `update public.organization_private set verification_docs = array[$1 || '/cert.pdf'] where org_id = $2`, [orgB, orgA]), 'organization_private_docs_in_own_folder')
+expectErr('C1b', 'path traversal in a document path is rejected',
+  await as('o1', `update public.organization_private set verification_docs = array[$1 || '/../x.pdf'] where org_id = $1`, [orgA]), 'organization_private_docs_in_own_folder')
+const okDoc = await as('o1', `update public.organization_private set verification_docs = array[$1 || '/123-cert.pdf'] where org_id = $1`, [orgA])
+check('C1c', 'document in own organization folder is accepted', okDoc.ok && okDoc.affected === 1, okDoc)
+expectErr('C2a', 'profiles has no suspension reason column', await op(`select suspended_reason from public.profiles limit 1`), 'suspended_reason')
+await as('admin', `select public.admin_set_suspension($1, true, 'Policy breach (test)')`, [uid.v4])
+const ar = await as('admin', `select suspended_reason from public.admin_users() where user_id = $1`, [uid.v4])
+check('C2b', 'platform admin still sees the reason (from the audit log)', ar.rows?.[0]?.suspended_reason === 'Policy breach (test)', ar)
+check('C2c', 'suspended user is told the reason by notification',
+  val(await op(`select body from public.notifications where user_id = $1 and kind = 'account_status' order by created_at desc limit 1`, [uid.v4])) === 'Policy breach (test)')
+await as('admin', `select public.admin_set_suspension($1, false)`, [uid.v4])
+const S5 = val(await op(`insert into public.shifts (opportunity_id, org_id, title, starts_at, ends_at, capacity, created_by)
+  values ($1, $2, 'C4', now() + interval '500 hours', now() + interval '502 hours', 2, $3) returning id`, [oppApp, orgA, uid.o1]))
+await op(`update public.profiles set skills = '{first aid}' where id = $1`, [uid.admin]) // opportunity requires a matching skill
+const appC4 = (await as('admin', `select public.apply_to_opportunity($1) r`, [oppApp])).rows?.[0]?.r?.application_id
+const offC4 = (await as('o1', `select public.send_offer($1, $2) r`, [appC4, S5])).rows?.[0]?.r?.offer_id
+const cs = await as('o1', `select public.cancel_shift($1, 'Venue closed')`, [S5])
+check('C4a', 'cancelling a shift revokes its pending offer', cs.ok && val(await op(`select status::text from public.offers where id = $1`, [offC4])) === 'revoked', { cs, offC4 })
+check('C4b', 'the application returns to under review',
+  val(await op(`select status::text from public.applications where id = $1`, [appC4])) === 'under_review')
+check('C4c', 'the volunteer is notified',
+  val(await op(`select count(*)::int from public.notifications where user_id = $1 and title = 'An offered shift was cancelled'`, [uid.admin])) === 1)
+
 // ---- report -------------------------------------------------------------------
 for (const r of results) console.log(`${r.pass ? 'PASS' : 'FAIL'}  ${r.id.padEnd(6)} ${r.desc}${r.pass ? '' : '  -> ' + r.detail}`);
 const passed = results.filter(r => r.pass).length;

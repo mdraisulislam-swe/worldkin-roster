@@ -6,7 +6,7 @@ applied: [
   '20261125135004_wk05_join_shift_volunteer_lock.sql',
   '20261126000000_wk06_applications_platform.sql'
 ]
-tables: 17 | rls on: 17 | policies: 28 | functions: 63 | triggers: 34
+tables: 17 | rls on: 17 | policies: 28 | functions: 65 | triggers: 35
 PASS  SETUP   profiles auto-created for 10 users
 PASS  S3      metadata platform_role ignored at signup
 PASS  OPS1    operator can bootstrap first platform admin

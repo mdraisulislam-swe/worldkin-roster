@@ -31,8 +31,10 @@ alter table public.profiles
   add column availability     text check (char_length(availability) <= 300),
   add column experience       text check (char_length(experience) <= 2000),
   add column avatar_url       text check (avatar_url ~* '^https://[^\s]+$' and char_length(avatar_url) <= 500),
-  add column suspended_at     timestamptz,
-  add column suspended_reason text check (char_length(suspended_reason) <= 500);
+  add column suspended_at     timestamptz;
+-- The suspension REASON is not stored on profiles (organization team members can
+-- read each other's profile rows); it lives in audit_logs (platform admins only)
+-- and in the notification sent to the suspended user.
 
 grant update (education, interests, languages, availability, experience, avatar_url) on public.profiles to authenticated;
 
@@ -58,6 +60,19 @@ alter table public.organizations
 
 grant update (org_type, city, phone, official_email, logo_url) on public.organizations to authenticated;
 
+-- Every stored document path must be inside this organization's storage folder
+-- ("<org_id>/<file>") — prevents presenting another organization's document.
+-- Executable by authenticated: CHECK constraints run with the caller's rights.
+create or replace function public.docs_in_org_folder(p_org uuid, p_docs text[])
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select coalesce(bool_and(d ~ ('^' || p_org::text || '/[^/]+$') and d !~ '\.\.'), true)
+  from unnest(p_docs) as d;
+$$;
+
 create table public.organization_private (
   org_id              uuid primary key references public.organizations (id) on delete cascade,
   address             text check (char_length(address) <= 300),
@@ -65,7 +80,8 @@ create table public.organization_private (
   representative_name text check (char_length(representative_name) <= 120),
   representative_role text check (char_length(representative_role) <= 120),
   verification_docs   text[] not null default '{}' check (cardinality(verification_docs) <= 5),
-  updated_at          timestamptz not null default now()
+  updated_at          timestamptz not null default now(),
+  constraint organization_private_docs_in_own_folder check (public.docs_in_org_folder(org_id, verification_docs))
 );
 create trigger organization_private_set_updated_at before update on public.organization_private
   for each row execute function public.tg_set_updated_at();
@@ -1182,8 +1198,7 @@ begin
     raise exception 'WK_REASON_REQUIRED' using errcode = '22023';
   end if;
   update public.profiles
-     set suspended_at = case when p_suspend then now() end,
-         suspended_reason = case when p_suspend then left(btrim(p_reason), 500) end
+     set suspended_at = case when p_suspend then now() end
    where id = p_user_id;
   insert into public.audit_logs (actor_id, org_id, action, entity_type, entity_id, details)
   values (auth.uid(), null, case when p_suspend then 'suspend' else 'unsuspend' end, 'profiles', p_user_id,
@@ -1210,7 +1225,12 @@ begin
     raise exception 'WK_FORBIDDEN' using errcode = '42501';
   end if;
   return query
-  select p.id, p.full_name, u.email::text, p.country_code, p.city, p.platform_role, p.suspended_at, p.suspended_reason, p.created_at,
+  select p.id, p.full_name, u.email::text, p.country_code, p.city, p.platform_role, p.suspended_at,
+         case when p.suspended_at is not null then (
+           select l.details ->> 'reason' from public.audit_logs l
+           where l.entity_type = 'profiles' and l.entity_id = p.id and l.action = 'suspend'
+           order by l.occurred_at desc limit 1) end,
+         p.created_at,
          (select count(*) from public.org_members m where m.user_id = p.id),
          (select count(*) from public.signups g where g.volunteer_id = p.id),
          (select count(*) from public.applications a where a.volunteer_id = p.id),
@@ -1553,6 +1573,37 @@ $$;
 create trigger participation_notify after insert on public.participation_records
   for each row execute function public.tg_notify_participation();
 
+create or replace function public.tg_revoke_offers_on_shift_cancel()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  r record;
+begin
+  if new.status = 'cancelled' and old.status is distinct from 'cancelled' then
+    for r in
+      update public.offers o set status = 'revoked', responded_at = now()
+       where o.id in (select x.id from public.offers x
+                      where x.shift_id = new.id and x.status = 'pending'
+                      for update skip locked)
+      returning o.application_id, o.volunteer_id
+    loop
+      update public.applications a set status = 'under_review'
+       where a.id in (select a2.id from public.applications a2
+                      where a2.id = r.application_id and a2.status = 'selected'
+                      for update skip locked);
+      perform public._notify(r.volunteer_id, 'offer_revoked', 'An offered shift was cancelled',
+        'The organization cancelled the shift in your offer. Your application is back under review.', '/me/applications');
+    end loop;
+  end if;
+  return null;
+end;
+$$;
+create trigger shifts_revoke_offers_on_cancel after update of status on public.shifts
+  for each row execute function public.tg_revoke_offers_on_shift_cancel();
+
 -- -----------------------------------------------------------------------------
 -- 16. Function privileges: new internals stay private; API gets exactly these.
 -- -----------------------------------------------------------------------------
@@ -1567,6 +1618,8 @@ revoke execute on function
   public.tg_notify_org_status(),
   public.tg_notify_signup_change(),
   public.tg_notify_participation(),
+  public.tg_revoke_offers_on_shift_cancel(),
+  public.docs_in_org_folder(uuid, text[]),
   public.join_shift(uuid, uuid),
   public.apply_to_opportunity(uuid, text),
   public.withdraw_application(uuid),
@@ -1594,6 +1647,7 @@ revoke execute on function
 from public, anon, authenticated;
 
 grant execute on function public.platform_stats() to anon, authenticated;
+grant execute on function public.docs_in_org_folder(uuid, text[]) to authenticated;
 grant execute on function public.list_organizations(text, text, public.cause_category, public.org_type, integer, integer) to anon, authenticated;
 grant execute on function public.org_feedback(uuid, integer, integer) to anon, authenticated;
 grant execute on function public.search_opportunities(text, public.cause_category, text, public.opportunity_mode, timestamptz, boolean, text, integer, integer, public.compensation_type, text, text, uuid) to anon, authenticated;

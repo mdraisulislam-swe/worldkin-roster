@@ -124,7 +124,7 @@ export type OpportunityExtra = {
 // ------------------------------------------------------------------ profiles
 export type ProfileExtra = {
   education: string | null; interests: string[]; languages: string[]; availability: string | null
-  experience: string | null; avatar_url: string | null; suspended_at: string | null; suspended_reason: string | null
+  experience: string | null; avatar_url: string | null; suspended_at: string | null
 }
 export async function getMyPhone(userId: string) {
   const list = await rows<{ phone: string | null }>(raw().from('profile_private').select('phone').eq('id', userId).limit(1))

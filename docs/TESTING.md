@@ -147,3 +147,17 @@ Branch `feature/applications-platform`. **Not applied live** (awaiting approval)
 | Browser (production build vs live project without wk06) | new public pages render; missing RPCs degrade to "—"/error states; 375 px no overflow on home, join, sign-up, explore, organizations | manual run |
 
 Not testable locally: storage buckets/policies (`wk07`), real parallel transactions (PGlite is single-connection) — covered by `supabase/tests/live_applications_check.mjs` (C1 simultaneous last-seat acceptance, C2 no overbooking, C3 triple parallel acceptance of one offer) once wk06 is applied.
+
+## 13. Pre-apply safety review corrections (26 Nov 2026, local only)
+
+Production read-only review findings and fixes (nothing applied to production):
+
+| Fix | Change | Test |
+|---|---|---|
+| C1 | `organization_private.verification_docs` paths must be `<own org id>/<file>` (CHECK via `docs_in_org_folder`), so an organization cannot present another organization's document | C1a–C1c PASS |
+| C2 | suspension reason removed from `profiles` (team members can read profile rows); kept in `audit_logs` (platform admins) and in the user's notification | C2a–C2c PASS |
+| C4 | cancelling a shift revokes its pending offers (SKIP LOCKED — no deadlock with an acceptance in progress), application back to review, volunteer notified | C4a–C4c PASS |
+| R1 | `supabase/rollback/rollback_wk06.sql`, `rollback_wk07.sql` | RB1 schema after wk06 + rollback identical to wk01–wk05 (columns, constraints, indexes, triggers, function bodies, ACLs, policies, types); RB2 wk06 re-applies after rollback; RB3 double apply fails atomically, schema intact |
+
+Totals: wk06 suite **105/105**, regression **99/99**, seed 14/14, tamper T1–T4 blocked, rollback 3/3, unit 33/33, tsc/lint 0, build OK. Evidence: `docs/evidence/local_wk06_tests.txt`, `local_regression_99.txt`, `local_rollback_check.txt`.
+Not provable locally: storage policies (wk07) and Supabase's own `apply_migration` transaction handling.
