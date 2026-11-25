@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter, redirect } from 'react-router'
 import { AppShell } from '../components/layout/AppShell'
 import { RequireAuth, RequireOrgRole, RequirePlatformAdmin } from '../auth/guards'
 import { HomePage } from '../pages/HomePage'
@@ -11,6 +11,7 @@ const page = <K extends string>(load: () => Promise<Record<K, React.ComponentTyp
   lazy(() => load().then((m) => ({ default: m[name] })))
 const SignInPage = page(() => import('../pages/AuthPages'), 'SignInPage')
 const SignUpPage = page(() => import('../pages/AuthPages'), 'SignUpPage')
+const AuthConfirmedPage = page(() => import('../pages/AuthPages'), 'AuthConfirmedPage')
 const ExplorePage = page(() => import('../pages/ExplorePage'), 'ExplorePage')
 const OpportunityPage = page(() => import('../pages/OpportunityPage'), 'OpportunityPage')
 const MyShiftsPage = page(() => import('../pages/MyShiftsPage'), 'MyShiftsPage')
@@ -40,6 +41,9 @@ export const router = createBrowserRouter([
       { path: 'opportunities/:id', element: <OpportunityPage /> },
       { path: 'signin', element: <SignInPage /> },
       { path: 'signup', element: <SignUpPage /> },
+      { path: 'auth/confirmed', element: <AuthConfirmedPage /> },
+      // /login is a common guess for the sign-in page; keep ?next= when redirecting.
+      { path: 'login', loader: ({ request }) => redirect('/signin' + new URL(request.url).search) },
 
       { path: 'me', element: <RequireAuth><MyShiftsPage /></RequireAuth> },
       { path: 'me/record', element: <RequireAuth><RecordPage /></RequireAuth> },

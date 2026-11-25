@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { toAppError, unwrap } from '../lib/errors'
 import type { Enums, Tables } from '../lib/database.types'
+import { confirmationRedirectUrl } from '../lib/authRedirect'
 
 export type Membership = {
   org_id: string
@@ -18,7 +19,8 @@ type AuthState = {
   isPlatformAdmin: boolean
   roleIn: (orgId: string) => Enums<'org_role'> | null
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, fullName: string) => Promise<{ needsConfirmation: boolean }>
+  signUp: (email: string, password: string, fullName: string, next?: string | null) => Promise<{ needsConfirmation: boolean }>
+  resendConfirmation: (email: string) => Promise<void>
   signOut: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -85,15 +87,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw toAppError(error)
       },
-      async signUp(email, password, fullName) {
+      async signUp(email, password, fullName, next) {
         if (!supabase) throw new Error('Not configured')
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin },
+          options: { data: { full_name: fullName }, emailRedirectTo: confirmationRedirectUrl(window.location.origin, next) },
         })
         if (error) throw toAppError(error)
         return { needsConfirmation: !data.session }
+      },
+      async resendConfirmation(email) {
+        if (!supabase) throw new Error('Not configured')
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email,
+          options: { emailRedirectTo: confirmationRedirectUrl(window.location.origin) },
+        })
+        if (error) throw toAppError(error)
       },
       async signOut() {
         await supabase?.auth.signOut()

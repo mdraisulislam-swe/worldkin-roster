@@ -59,6 +59,10 @@ describe('parseEnv — Worldkin isolation guard', () => {
     const r = parseEnv({ VITE_SUPABASE_URL: WORLDKIN_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_secret_0123456789abcdefghij' })
     expect(r.ok).toBe(false)
   })
+  it('rejects placeholder text, quotes and whitespace instead of a real key', () => {
+    for (const bad of ['Supabase Publishable key', '"sb_publishable_0123456789abcdefghij"', 'sb_publishable_0123456789abcdefghij\n', 'sb_publishable_replace_me x'])
+      expect(parseEnv({ VITE_SUPABASE_URL: WORLDKIN_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY: bad }).ok).toBe(false)
+  })
   it('reports missing configuration', () => {
     expect(parseEnv({}).ok).toBe(false)
   })

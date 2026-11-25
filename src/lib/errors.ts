@@ -79,7 +79,9 @@ export function toAppError(err: unknown): AppError {
     return new AppError('Network problem. Check your connection and try again.', 'NETWORK', true)
   }
   if (/invalid login credentials/i.test(message)) return new AppError('Email or password is incorrect.', 'AUTH_INVALID')
-  if (/email not confirmed/i.test(message)) return new AppError('Please confirm your email address first.', 'AUTH_UNCONFIRMED')
+  if (/email not confirmed/i.test(message) || code === 'email_not_confirmed') return new AppError('Please confirm your email address first. Check your inbox, or send a new confirmation link below.', 'AUTH_UNCONFIRMED')
+  if (/rate limit|over_email_send_rate_limit/i.test(message) || code === 'over_email_send_rate_limit') return new AppError('Too many emails were requested. Please wait a few minutes and try again.', 'AUTH_RATE_LIMIT', true)
+  if (/user already registered/i.test(message) || code === 'user_already_exists') return new AppError('An account with this email may already exist. Try signing in instead.', 'AUTH_EXISTS')
   return new AppError(message || 'Something went wrong. Please try again.', code, true)
 }
 

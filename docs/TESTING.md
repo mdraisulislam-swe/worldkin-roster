@@ -108,3 +108,26 @@ Issues found and fixed during the journeys: dialog was not centred (Tailwind res
 |---|---|
 | L19 + platform-admin review journey | Founder sign-in (owner) |
 | Production smoke test | deployment approval |
+
+## 10. Production readiness fixes (25 Nov 2026, local)
+
+| Check | Result |
+|---|---|
+| Root cause "Invalid API key" | Vercel production bundle contains the 24-character text "Supabase Publishable key" instead of the key; Supabase returns `401 Invalid API key` for that value and `200` for the real publishable key. Env variable **names** on Vercel match the code. |
+| Env guard | now rejects placeholder text, quotes and whitespace → "Configuration required" page (unit test + production build with the placeholder) |
+| Direct URL refresh | `vercel.json` rewrites every non-`/assets/` path to `index.html` (rule checked for /signup, /login, /explore, /me/record, /org/…); `/login?next=/me` → `/signin?next=%2Fme` |
+| Production-like build (real public config, `vite preview`, 375 px) | /, /explore, /signin, /signup, opportunity detail, 404: no horizontal overflow, all inputs labelled, per-page tab title, focus moves to main content after navigation, no console errors |
+| Toolchain | tsc 0 · lint 0 · tests 24/24 · build OK |
+
+## 11. Email confirmation flow (25 Nov 2026)
+
+Root cause of `http://localhost:3000/#access_token=…`: the app already asked for the production origin (`emailRedirectTo`), but Supabase only honours it when it is on the project's Redirect URL allow-list; otherwise it uses the Site URL, whose default is `http://localhost:3000`. Fix = Supabase Auth URL Configuration (owner) + a dedicated `/auth/confirmed` page.
+
+| Scenario (production build, `vite preview`) | Result |
+|---|---|
+| Successful confirmation (real test-account session delivered exactly like Supabase's implicit-flow redirect, `?next=/explore`) | "Email confirmed" → signed in → forwarded to /explore; tokens removed from the address bar; no console errors |
+| Expired / already-used link on `/auth/confirmed` | "This confirmation link has expired or was already used" + sign-in link + resend form; error removed from URL |
+| Same error landing on `/` (Site URL fallback) | redirected to `/auth/confirmed` with the same message |
+| `/auth/confirmed` opened directly, signed out | "Confirm your email" + resend form |
+| Unit tests (`authRedirect.test.ts`) | redirect URL, open-redirect protection, error parsing, token-fragment detection — 29/29 total |
+| Live `worldkin-roster.vercel.app` (commit 332c678, before this fix) | key now correct (matches publishable key); `/signup`, `/signin`, `/explore`, `/login`, `/me` → **404** (vercel.json not deployed yet) |

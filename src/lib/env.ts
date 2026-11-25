@@ -14,7 +14,13 @@ const EnvSchema = z.object({
   VITE_SUPABASE_PUBLISHABLE_KEY: z
     .string({ error: 'VITE_SUPABASE_PUBLISHABLE_KEY is missing' })
     .min(20, 'VITE_SUPABASE_PUBLISHABLE_KEY looks invalid')
-    .refine((k) => !k.startsWith('sb_secret_'), 'A SECRET key must never be used in the browser'),
+    .refine((k) => !k.startsWith('sb_secret_'), 'A SECRET key must never be used in the browser')
+    // Catches placeholder text, quotes or stray whitespace pasted into the
+    // hosting dashboard, which otherwise surface only as "Invalid API key".
+    .refine(
+      (k) => /^sb_publishable_[A-Za-z0-9_-]+$/.test(k) || /^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(k),
+      'VITE_SUPABASE_PUBLISHABLE_KEY must be the project publishable key (sb_publishable_…) with no spaces or quotes',
+    ),
 })
 
 export type AppEnv = z.infer<typeof EnvSchema>

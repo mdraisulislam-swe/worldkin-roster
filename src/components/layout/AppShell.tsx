@@ -1,6 +1,7 @@
-import { Suspense, useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
+import { CONFIRM_PATH, readAuthRedirectError } from '../../lib/authRedirect'
 import { LoadingState } from '../ui'
 
 const linkCls = ({ isActive }: { isActive: boolean }) =>
@@ -10,6 +11,37 @@ export function AppShell() {
   const { session, profile, memberships, isPlatformAdmin, signOut } = useAuth()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
+  const firstRender = useRef(true)
+  // After client-side navigation, move focus to the new page content so keyboard
+  // and screen-reader users start at the top of it (not on the old link).
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return }
+    mainRef.current?.focus({ preventScroll: true })
+    window.scrollTo(0, 0)
+  }, [pathname])
+  // A confirmation link that fails (expired / already used) may land on any page,
+  // e.g. the Site URL root. Route it to the confirmation page, which explains it.
+  useEffect(() => {
+    if (pathname !== CONFIRM_PATH && readAuthRedirectError(window.location.hash, '')) {
+      navigate(CONFIRM_PATH + window.location.hash, { replace: true })
+    }
+  }, [pathname, navigate])
+  // Tab title follows the page heading (pages load lazily, so watch for it),
+  // letting screen-reader and multi-tab users know where they are.
+  useEffect(() => {
+    const main = mainRef.current
+    if (!main) return
+    const sync = () => {
+      const h1 = main.querySelector('h1')?.textContent?.trim()
+      document.title = pathname === '/' || !h1 ? 'Worldkin Roster — Everyone is kin.' : h1 + ' · Worldkin Roster'
+    }
+    sync()
+    const obs = new MutationObserver(sync)
+    obs.observe(main, { childList: true, subtree: true, characterData: true })
+    return () => obs.disconnect()
+  }, [pathname])
 
   const nav = (
     <>
@@ -75,7 +107,7 @@ export function AppShell() {
           </nav>
         )}
       </header>
-      <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+      <main id="main" ref={mainRef} tabIndex={-1} className="outline-none mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
         <Suspense fallback={<LoadingState />}>
           <Outlet />
         </Suspense>
