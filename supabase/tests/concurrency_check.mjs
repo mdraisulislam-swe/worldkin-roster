@@ -1,84 +1,94 @@
 // =============================================================================
-// Worldkin Roster — live A05 concurrency check (DRAFT, NOT YET RUN)
-// Zero dependencies (Node >= 18 global fetch). Talks to the Supabase Data API
-// exactly like the browser does: publishable key + a user's access token.
+// Worldkin Roster — live A05 concurrency check
+// -----------------------------------------------------------------------------
+// Runs real parallel requests through the Supabase Data API (PostgREST), so
+// every request is its own database transaction on its own connection.
+// Self-contained: creates its own "[TEST]" fixtures through the demo
+// coordinator account and cancels/closes them afterwards, so it can be run
+// repeatedly (the owner runs it 3 times for evidence).
 //
-// Target: worldkin-roster ONLY. The script refuses to run against any other URL.
+// Prerequisites: migrations applied, demo seed applied (organization
+// "dhaka-food-relief" with demo.coordinator as coordinator), users from
+// create_test_users.mjs (demo.coordinator, load01..load10).
 //
-// Prerequisites (created in milestone M1 after owner approval):
-//   - 20 confirmed test volunteers: <prefix>01..<prefix>20@<domain>, same password
-//   - SHIFT_FULL_ID     : published shift, capacity 1, waitlist_limit 5, in the future
-//   - SHIFT_A_ID/B_ID   : two published future shifts whose times overlap
-//
-// Env: SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, TEST_EMAIL_PREFIX, TEST_EMAIL_DOMAIN,
-//      TEST_PASSWORD, SHIFT_FULL_ID, SHIFT_A_ID, SHIFT_B_ID
+// Env (owner's terminal session only):
+//   SUPABASE_URL=https://ekkvwgohpzliwbmjnrth.supabase.co
+//   SUPABASE_PUBLISHABLE_KEY=<publishable key — public by design>
+//   TEST_PASSWORD=<test account password>
 // Run: node supabase/tests/concurrency_check.mjs
 // =============================================================================
-const env = process.env;
-const URL_ = env.SUPABASE_URL;
-const KEY = env.SUPABASE_PUBLISHABLE_KEY;
-if (URL_ !== 'https://ekkvwgohpzliwbmjnrth.supabase.co') {
-  console.error('Refusing to run: SUPABASE_URL is not the Worldkin project.');
-  process.exit(2);
-}
+import { requireEnv, email, signIn, rpc, select, insert, patch, reporter, inHours } from './lib/api.mjs';
 
-async function signIn(email) {
-  const r = await fetch(`${URL_}/auth/v1/token?grant_type=password`, {
-    method: 'POST',
-    headers: { apikey: KEY, 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password: env.TEST_PASSWORD }),
-  });
-  if (!r.ok) throw new Error(`sign-in failed for ${email}: ${r.status}`);
-  return (await r.json()).access_token;
-}
+requireEnv();
+const t = reporter('A05 concurrency check (live)');
+const runId = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
 
-async function rpc(token, fn, args) {
-  const r = await fetch(`${URL_}/rest/v1/rpc/${fn}`, {
-    method: 'POST',
-    headers: { apikey: KEY, authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-    body: JSON.stringify(args),
-  });
-  const body = await r.json().catch(() => null);
-  return r.ok ? { ok: true, data: body } : { ok: false, code: body?.message, status: r.status };
-}
+// ---- actors -----------------------------------------------------------------
+const coord = await signIn(email('demo.coordinator'));
+const load = await Promise.all(
+  Array.from({ length: 10 }, (_, i) => signIn(email(`load${String(i + 1).padStart(2, '0')}`))));
 
-const emails = Array.from({ length: 20 }, (_, i) =>
-  `${env.TEST_EMAIL_PREFIX}${String(i + 1).padStart(2, '0')}@${env.TEST_EMAIL_DOMAIN}`);
-const tokens = await Promise.all(emails.map(signIn));
-let failures = 0;
-const assert = (name, cond, info) => {
-  console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}`, cond ? '' : JSON.stringify(info));
-  if (!cond) failures++;
-};
+// ---- fixtures (created through the API as the coordinator) -------------------
+const org = await select(coord.token, 'organizations?slug=eq.dhaka-food-relief&select=id');
+const orgId = org.data?.[0]?.id;
+if (!orgId) { console.error('Seed organization dhaka-food-relief not found — apply the demo seed first.'); process.exit(2); }
 
-// C1 — 20 volunteers race for 1 seat (+5 waitlist) at the same instant.
-const c1 = await Promise.all(tokens.map(t =>
-  rpc(t, 'join_shift', { p_shift_id: env.SHIFT_FULL_ID, p_idempotency_key: crypto.randomUUID() })));
+const opp = await insert(coord.token, 'opportunities', {
+  org_id: orgId, title: `[TEST] Concurrency drill ${runId}`,
+  description: 'Automated A05 test fixture. Safe to ignore.', cause: 'other', mode: 'remote', status: 'published',
+});
+const oppId = opp.data?.[0]?.id;
+const mkShift = (startH, endH, capacity, waitlist_limit) => insert(coord.token, 'shifts', {
+  opportunity_id: oppId, org_id: orgId, title: `[TEST] ${runId}`,
+  starts_at: inHours(startH), ends_at: inHours(endH), capacity, waitlist_limit,
+});
+const shiftFull = (await mkShift(240, 242, 1, 3)).data?.[0]?.id;   // capacity 1, waitlist 3
+const shiftA = (await mkShift(260, 263, 5, 0)).data?.[0]?.id;      // A and B overlap by 2 hours
+const shiftB = (await mkShift(261, 264, 5, 0)).data?.[0]?.id;
+t.check('SETUP', 'fixtures created through the API (opportunity + 3 shifts)', oppId && shiftFull && shiftA && shiftB, { opp, shiftFull, shiftA, shiftB });
+
+// ---- C1: 10 volunteers race for 1 seat (+3 waitlist) at the same instant -----
+const c1 = await Promise.all(load.map(u =>
+  rpc(u.token, 'join_shift', { p_shift_id: shiftFull, p_idempotency_key: crypto.randomUUID() })));
 const confirmed = c1.filter(r => r.ok && r.data.status === 'confirmed').length;
 const waitlisted = c1.filter(r => r.ok && r.data.status === 'waitlisted');
-const full = c1.filter(r => !r.ok && r.code === 'WK_SHIFT_FULL').length;
+const full = c1.filter(r => !r.ok && r.msg === 'WK_SHIFT_FULL').length;
 const positions = waitlisted.map(r => r.data.waitlist_position).sort((a, b) => a - b);
-assert('C1 exactly 1 confirmed', confirmed === 1, { confirmed });
-assert('C1 exactly 5 waitlisted', waitlisted.length === 5, { waitlisted: waitlisted.length });
-assert('C1 waitlist positions are 1..5 without gaps', positions.join() === '1,2,3,4,5', positions);
-assert('C1 remaining 14 rejected as full', full === 14, { full });
+t.check('C1a', 'exactly 1 confirmed out of 10 parallel joins', confirmed === 1, { confirmed, c1 });
+t.check('C1b', 'exactly 3 waitlisted', waitlisted.length === 3, { waitlisted: waitlisted.length });
+t.check('C1c', 'waitlist positions are 1,2,3 (FIFO, no gaps)', positions.join() === '1,2,3', positions);
+t.check('C1d', 'remaining 6 rejected with WK_SHIFT_FULL', full === 6, { full });
+const avail = await rpc(coord.token, 'shift_availability', { p_opportunity_id: oppId });
+const row = avail.data?.find(r => r.shift_id === shiftFull);
+t.check('C1e', 'database state: confirmed=1 <= capacity, waitlisted=3 <= limit', row?.confirmed === 1 && row?.waitlisted === 3, row);
 
-// C2 — one volunteer double-clicks: 5 parallel calls with the SAME idempotency key.
+// ---- C2: one volunteer double-clicks: 5 parallel calls, same idempotency key -
 const key = crypto.randomUUID();
 const c2 = await Promise.all(Array.from({ length: 5 }, () =>
-  rpc(tokens[19], 'join_shift', { p_shift_id: env.SHIFT_A_ID, p_idempotency_key: key })));
+  rpc(load[8].token, 'join_shift', { p_shift_id: shiftA, p_idempotency_key: key })));
 const ids = new Set(c2.filter(r => r.ok).map(r => r.data.signup_id));
-assert('C2 all 5 calls succeed', c2.every(r => r.ok), c2);
-assert('C2 one signup row only', ids.size === 1, [...ids]);
-assert('C2 exactly one non-replayed', c2.filter(r => r.ok && !r.data.replayed).length === 1, c2);
+t.check('C2a', 'all 5 identical requests succeed', c2.every(r => r.ok), c2);
+t.check('C2b', 'only one signup row created', ids.size === 1, [...ids]);
+t.check('C2c', 'exactly one non-replayed response', c2.filter(r => r.ok && !r.data.replayed).length === 1, c2);
 
-// C3 — one volunteer requests two overlapping shifts at the same instant.
+// ---- C3: one volunteer requests two overlapping shifts at the same instant --
 const c3 = await Promise.all([
-  rpc(tokens[18], 'join_shift', { p_shift_id: env.SHIFT_A_ID, p_idempotency_key: crypto.randomUUID() }),
-  rpc(tokens[18], 'join_shift', { p_shift_id: env.SHIFT_B_ID, p_idempotency_key: crypto.randomUUID() }),
+  rpc(load[9].token, 'join_shift', { p_shift_id: shiftA, p_idempotency_key: crypto.randomUUID() }),
+  rpc(load[9].token, 'join_shift', { p_shift_id: shiftB, p_idempotency_key: crypto.randomUUID() }),
 ]);
-assert('C3 exactly one succeeds', c3.filter(r => r.ok).length === 1, c3);
-assert('C3 other is WK_SCHEDULE_CONFLICT', c3.some(r => !r.ok && r.code === 'WK_SCHEDULE_CONFLICT'), c3);
+t.check('C3a', 'exactly one of two overlapping joins succeeds', c3.filter(r => r.ok).length === 1, c3);
+t.check('C3b', 'the other is WK_SCHEDULE_CONFLICT', c3.some(r => !r.ok && r.msg === 'WK_SCHEDULE_CONFLICT'), c3);
 
-console.log(failures ? `\n${failures} FAILED` : '\nALL PASSED');
-process.exit(failures ? 1 : 0);
+// ---- C4: confirmed volunteer cancels -> waitlist #1 promoted (FIFO) ----------
+const winner = c1.find(r => r.ok && r.data.status === 'confirmed');
+const head = waitlisted.find(r => r.data.waitlist_position === 1);
+const winnerIdx = c1.indexOf(winner);
+const cancel = await rpc(load[winnerIdx].token, 'cancel_signup', { p_signup_id: winner?.data.signup_id });
+t.check('C4', 'cancel promotes the waitlist head', cancel.ok && cancel.data.promoted_signup_ids?.[0] === head?.data.signup_id, cancel);
+
+// ---- cleanup (cancel fixtures so the next run starts clean) ------------------
+const cleaned = await Promise.all([shiftFull, shiftA, shiftB].map(id =>
+  rpc(coord.token, 'cancel_shift', { p_shift_id: id, p_reason: `automated test cleanup ${runId}` })));
+const closed = await patch(coord.token, `opportunities?id=eq.${oppId}`, { status: 'closed' });
+t.check('CLEAN', 'fixtures cancelled and test opportunity closed', cleaned.every(r => r.ok) && closed.ok, { cleaned, closed });
+t.done();
