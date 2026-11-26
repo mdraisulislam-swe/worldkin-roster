@@ -14,7 +14,7 @@ import { organizationDetailsSchema, fieldErrors } from '../lib/validation'
 import { useNow } from '../lib/useNow'
 import { useDialog } from '../components/dialog'
 import { OrgLogo } from '../components/cards'
-import { Alert, Button, Card, Checkbox, EmptyState, ErrorState, Initials, LoadingState, PageHeader, Select, StatusBadge, TextArea, TextField } from '../components/ui'
+import { Alert, Button, Card, Checkbox, EmptyState, ErrorState, Initials, LoadingState, PageHeader, Select, StatusBadge, Tabs, TextArea, TextField } from '../components/ui'
 import { TABLE } from '../lib/table'
 import { Icon } from '../components/Icon'
 
@@ -217,6 +217,7 @@ export function OrgSettingsPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [tab, setTab] = useState<'public' | 'contact' | 'private'>('public')
   const org = useQuery({ queryKey: ['org-full', orgId], queryFn: () => getOrganizationFull(orgId) })
   const priv = useQuery({ queryKey: ['org-private', orgId], queryFn: () => getOrgPrivate(orgId) })
   const reload = () => { void qc.invalidateQueries({ queryKey: ['org-full', orgId] }); void qc.invalidateQueries({ queryKey: ['org-private', orgId] }); void qc.invalidateQueries({ queryKey: ['org', orgId] }) }
@@ -271,45 +272,67 @@ export function OrgSettingsPage() {
   if (org.isError) return <ErrorState message={toAppError(org.error).message} onRetry={() => org.refetch()} />
   const o = org.data, p = priv.data
   return (
-    <>
-      <PageHeader title="Profile & verification" subtitle={<span className="inline-flex items-center gap-2"><StatusBadge status={o.status} /> {o.name}</span>} />
-      {o.status === 'pending' && <div className="mb-4"><Alert tone="warning">Pending verification. Complete the details below and upload registration documents so administrators can verify you. Until then you can prepare drafts but cannot publish.</Alert></div>}
-      <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate key={o.created_at + (p?.org_id ?? '')}>
-            <h2 className="font-semibold">Public details</h2>
+    <div className="flex min-w-0 flex-col gap-6 [&>*:first-child]:mb-0">
+      <PageHeader title="Organization profile" subtitle={<span className="inline-flex flex-wrap items-center gap-2"><StatusBadge status={o.status} /> What visitors see on your public page — and what stays private.</span>}
+        actions={o.status === 'verified' ? <Link to={`/organizations/${o.slug}`} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#d5d9d2] bg-white px-4 text-[15px] font-semibold text-ink-900 hover:border-brand-600">Preview public profile</Link> : undefined} />
+      {o.status === 'pending' && <div><Alert tone="warning">Pending verification. Complete the details below and upload registration documents so administrators can verify you. Until then you can prepare drafts but cannot publish.</Alert></div>}
+      <div aria-live="polite" className="empty:-mt-6">{notice && <Alert tone={notice.tone}>{notice.text}</Alert>}</div>
+      <Tabs label="Organization profile sections" controls="org-settings" value={tab} onChange={setTab}
+        tabs={[{ value: 'public', label: 'Public profile' }, { value: 'contact', label: 'Public contact' }, { value: 'private', label: 'Private & verification' }]} />
+      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        {/* One form: hidden panels keep their fields, so a single Save still submits public and private details together (unchanged behaviour). */}
+        <form id="org-settings" role="tabpanel" aria-labelledby={`tab-org-settings-${tab}`} className={`flex flex-col gap-4 rounded-xl border border-neutral-100 bg-white p-5 shadow-[0_1px_2px_rgba(20,26,34,0.04)] sm:p-7`} onSubmit={onSubmit} noValidate key={o.created_at + (p?.org_id ?? '')}>
+          <div hidden={tab !== 'public'} className="flex flex-col gap-4">
+            <h2 className="text-xl font-semibold">Public profile</h2>
+            <TextArea label="About" name="description" defaultValue={o.description ?? ''} error={errors.description} />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Select label="Organization type" name="org_type" defaultValue={o.org_type} options={ORG_TYPES.map((t) => ({ value: t, label: ORG_TYPE_LABELS[t] }))} />
-              <TextField label="City" name="city" defaultValue={o.city ?? ''} error={errors.city} />
-              <TextField label="Official email" name="official_email" type="email" defaultValue={o.official_email ?? ''} error={errors.official_email} />
-              <TextField label="Phone" name="phone" type="tel" defaultValue={o.phone ?? ''} error={errors.phone} />
+              <Select label="Type" name="org_type" defaultValue={o.org_type} options={ORG_TYPES.map((t) => ({ value: t, label: ORG_TYPE_LABELS[t] }))} />
+              <TextField label="Public city" name="city" defaultValue={o.city ?? ''} error={errors.city} />
             </div>
+          </div>
+          <div hidden={tab !== 'contact'} className="flex flex-col gap-4">
+            <h2 className="text-xl font-semibold">Public contact information</h2>
+            <p className="text-sm text-ink-500">All fields are optional. These details appear on your public organization page.</p>
+            <TextField label="Official email" name="official_email" type="email" defaultValue={o.official_email ?? ''} error={errors.official_email} />
+            <TextField label="Official phone" name="phone" type="tel" defaultValue={o.phone ?? ''} error={errors.phone} />
             <TextField label="Website" name="website" defaultValue={o.website ?? ''} placeholder="https://" error={errors.website} />
-            <TextArea label="Description" name="description" defaultValue={o.description ?? ''} error={errors.description} />
-            <h2 className="mt-2 font-semibold">Private verification details <span className="text-sm font-normal text-ink-500">(visible to your team and Worldkin administrators only)</span></h2>
+            <p className="rounded-lg bg-sky-50 px-3 py-2.5 text-sm text-sky-900">Your <strong>sign-in email</strong> is never published automatically, and verification does not make any detail public.</p>
+          </div>
+          <div hidden={tab !== 'private'} className="flex flex-col gap-4">
+            <h2 className="text-xl font-semibold">Private details &amp; verification</h2>
+            <p className="text-xs text-ink-500">Visible to your organization's admins and Worldkin administrators only.</p>
             <TextField label="Registered address" name="address" defaultValue={p?.address ?? ''} error={errors.address} />
             <div className="grid gap-4 sm:grid-cols-3">
-              <TextField label="Registration ID (if any)" name="registration_id" defaultValue={p?.registration_id ?? ''} error={errors.registration_id} />
+              <TextField label="Registration number (if any)" name="registration_id" defaultValue={p?.registration_id ?? ''} error={errors.registration_id} />
               <TextField label="Representative name" name="representative_name" defaultValue={p?.representative_name ?? ''} error={errors.representative_name} />
               <TextField label="Representative role" name="representative_role" defaultValue={p?.representative_role ?? ''} error={errors.representative_role} />
             </div>
-            <div><Button type="submit" busy={busy}>Save details</Button></div>
-          </form>
-        </Card>
+            {o.status === 'verified' && <Alert tone="success">Verified by Worldkin.</Alert>}
+          </div>
+          <div className="flex flex-wrap items-center gap-3 border-t border-neutral-100 pt-4">
+            <Button type="submit" busy={busy}>Save changes</Button>
+            {(() => {
+              // A field error may sit on another tab: say where, with a link to it.
+              const where = { public: ['description', 'org_type', 'city'], contact: ['official_email', 'phone', 'website'], private: ['address', 'registration_id', 'representative_name', 'representative_role'] } as const
+              const bad = (Object.keys(where) as (keyof typeof where)[]).filter((t) => where[t].some((k) => errors[k]))
+              return bad.length > 0 && <p role="alert" className="text-sm text-rose-700">Please fix: {bad.map((t, i) => <span key={t}>{i ? ', ' : ''}<button type="button" className="underline" onClick={() => setTab(t)}>{t === 'public' ? 'Public profile' : t === 'contact' ? 'Public contact' : 'Private & verification'}</button></span>)}</p>
+            })()}
+          </div>
+        </form>
         <div className="flex flex-col gap-4">
           <Card>
-            <h2 className="mb-2 font-semibold">Logo</h2>
+            <h2 className="mb-2 text-base font-semibold">Logo</h2>
             <div className="flex items-center gap-3">
               <OrgLogo name={o.name} url={o.logo_url} size={64} />
               <label className="text-sm">
                 <span className="mb-1 block font-medium">Upload (PNG/JPEG/WebP, ≤ 2 MB)</span>
-                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => void upload('logo', e.currentTarget.files?.[0])} />
+                <input type="file" className="w-full min-w-0 text-sm" accept="image/png,image/jpeg,image/webp" onChange={(e) => void upload('logo', e.currentTarget.files?.[0])} />
               </label>
             </div>
           </Card>
           <Card>
-            <h2 className="mb-2 font-semibold">Verification documents</h2>
+            <h2 className="mb-2 text-base font-semibold">Verification documents</h2>
+            <p className="mb-2 text-xs text-ink-500">Private: only your admins and Worldkin administrators can open them.</p>
             {(p?.verification_docs ?? []).length === 0 ? <p className="text-sm text-ink-500">None uploaded yet.</p> : (
               <ul className="mb-2 flex flex-col gap-1 text-sm">
                 {p!.verification_docs.map((d) => <li key={d}><DocLink path={d} /></li>)}
@@ -317,12 +340,12 @@ export function OrgSettingsPage() {
             )}
             <label className="text-sm">
               <span className="mb-1 block font-medium">Add document (PDF/PNG/JPEG, ≤ 5 MB, max 5)</span>
-              <input type="file" accept="application/pdf,image/png,image/jpeg" onChange={(e) => void upload('doc', e.currentTarget.files?.[0])} />
+              <input type="file" className="w-full min-w-0 text-sm" accept="application/pdf,image/png,image/jpeg" onChange={(e) => void upload('doc', e.currentTarget.files?.[0])} />
             </label>
           </Card>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 

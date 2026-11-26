@@ -41,6 +41,11 @@
 | **C08** | `#/v/profile` | `/me/profile` | **VERIFIED (R1)** | Matched: photo row in the form; Full name / City; About; Skills; Languages / Availability; private Phone; Account card with masked email. Extra app fields (interests, country, education, experience) are kept after the prototype fields. Privacy switches, Delete account and skill chips are NOT CONNECTED. |
 | D01 | `#/o/dashboard` | `/org/:id` | VERIFIED | Recent activity NOT CONNECTED |
 | D04 | `#/o/applicants` | `/org/:id/applications` | VERIFIED | Search box NOT CONNECTED |
+| D02 | `#/o/opportunities` | `/org/:id` (Opportunities list on the overview) | PARTIAL (R2) | No separate route; the list stays on the overview to keep route contracts. Not re-compared in R2. |
+| **D03** | `#/o/create` | `/org/:id/opportunities/new`, `/org/:id/opportunities/:oppId` | **VERIFIED (R2)** | Matched: three section cards (Basics / Where & when / Selection & compensation), segmented mode control, selection radio cards, Save and publish / Save as draft, a **Live preview** card in the right column built only from form data, and a publishing note. "Opportunity type" select and skill chips are NOT CONNECTED (no schema field / free-text skills kept). Cover photo NOT CONNECTED. |
+| D05 | `#/o/applicant` | `/org/:id/applications` (inline detail) | PARTIAL (R2) | Detail is inline in the applicants table; no separate route. |
+| **D06–D07** | `#/o/offers`, `#/o/attendance` | `/org/:id/shifts/:shiftId` | **VERIFIED (R2)** | Matched: capacity and cancel cards, "Roster & attendance" table with initials, Present / No-show buttons, auto-promotion note and the audit-log alert. Same mutations and confirmation dialogs as before. Dispute flow NOT CONNECTED (labelled "planned"). |
+| **D08** | `#/o/profile` | `/org/:id/settings` | **VERIFIED (R2)** | Matched: Public profile / Public contact / Private & verification tabs, one Save changes, Logo and Verification documents cards, Preview public profile action. Errors on a hidden tab are listed in an alert with links. Fixed during R2: tab strip and file inputs overflowed at 375 / 1024 px. |
 | E01 | `#/a/overview` | `/admin` | VERIFIED | Role views (wk13), platform health NOT CONNECTED |
 | E06 | `#/a/audit` | `/admin/audit` | VERIFIED | — |
 | 09 | `#/system/states` | shared states | VERIFIED | — |
@@ -48,7 +53,6 @@
 
 ## Remaining (next batches)
 
-- **R2 Organization:** D02, D03, D05, D06, D07, D08.
 - **R3 Admin:** E02, E03, E04, E05.
 - **R4 Public:** A01, A03, A04, A05, A07.
 - **R5 Auth:** B01, B02, B04–B06.
