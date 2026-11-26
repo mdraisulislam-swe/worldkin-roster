@@ -190,9 +190,9 @@ function HeroSearch() {
   return (
     <form role="search" onSubmit={onSubmit} className="flex max-w-xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-lg sm:flex-row">
       <label className="flex flex-1 items-center gap-2 px-3 text-ink-500"><Icon name="search" size={18} /><span className="sr-only">What do you want to do?</span>
-        <input value={q} onChange={(e) => setQ(e.currentTarget.value)} placeholder="Teaching, food relief, climate…" className="min-h-11 w-full bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-500/70" /></label>
+        <input aria-label="What would you like to do?" value={q} onChange={(e) => setQ(e.currentTarget.value)} placeholder="Teaching, food relief, climate…" className="min-h-11 w-full bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-500/70" /></label>
       <label className="flex flex-1 items-center gap-2 border-black/5 px-3 text-ink-500 sm:border-l"><Icon name="map-pin" size={18} /><span className="sr-only">City</span>
-        <input value={place} onChange={(e) => setPlace(e.currentTarget.value)} placeholder="City" className="min-h-11 w-full bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-500/70" /></label>
+        <input aria-label="City" value={place} onChange={(e) => setPlace(e.currentTarget.value)} placeholder="City" className="min-h-11 w-full bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-500/70" /></label>
       <button className="min-h-11 rounded-lg bg-brand-700 px-5 text-[15px] font-semibold text-white hover:bg-brand-800">Find opportunities</button>
     </form>
   )

@@ -9,6 +9,8 @@ import { authRedirectMessage, hasAuthFragment, readAuthRedirectError, safeNext, 
 import { fieldErrors, signInSchema, signUpSchema } from '../lib/validation'
 import { supabase } from '../lib/supabase'
 import { OtpInput } from '../components/OtpInput'
+import { AuthFrame } from '../components/AuthFrame'
+import { Icon } from '../components/Icon'
 import { dashboardPath } from '../lib/dashboard'
 
 /**
@@ -79,8 +81,8 @@ export function SignInPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
-      <h1 className="mb-6 text-2xl font-semibold">Sign in</h1>
+    <AuthFrame>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight sm:text-3xl">Sign in</h1>
       <Card>
         <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
           {formError && <Alert tone="error">{formError.message}</Alert>}
@@ -89,7 +91,7 @@ export function SignInPage() {
           <Button type="submit" busy={busy}>Sign in</Button>
         </form>
         {formError?.unconfirmed && (
-          <div className="mt-4 flex flex-col gap-3 border-t border-black/10 pt-4">
+          <div className="mt-4 flex flex-col gap-3 border-t border-neutral-100 pt-4">
             <Button variant="secondary" onClick={() => {
               savePendingSignup({ email: formError.email, next, sentAt: 0 })
               navigate('/verify-email', { state: { email: formError.email, next } })
@@ -102,7 +104,7 @@ export function SignInPage() {
         <span>New here? <Link className="text-brand-700 underline" to="/join">Create an account</Link></span>
         <Link className="text-brand-700 underline" to="/forgot-password">Forgot password?</Link>
       </p>
-    </div>
+    </AuthFrame>
   )
 }
 
@@ -151,8 +153,8 @@ export function SignUpPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
-      <h1 className="mb-2 text-2xl font-semibold">{asOrg ? 'Register your organization' : 'Create your volunteer account'}</h1>
+    <AuthFrame>
+      <h1 className="mb-2 text-2xl font-bold tracking-tight sm:text-3xl">{asOrg ? 'Register your organization' : 'Create your volunteer account'}</h1>
       <p className="mb-6 text-sm text-ink-700">{asOrg
         ? 'Step 1 of 2: create the account of the person who will administer the organization. After confirming your email you will enter the organization details and verification documents. Organizations can publish opportunities only after Worldkin verifies them.'
         : 'Step 1 of 2: create your account. After confirming your email you can complete your volunteer profile — skills, languages, availability and more.'}
@@ -176,7 +178,7 @@ export function SignUpPage() {
       </Card>
       <p className="mt-4 text-sm text-ink-500">Already registered? <Link className="text-brand-700 underline" to="/signin">Sign in</Link>
         {' · '}<Link className="text-brand-700 underline" to={asOrg ? '/signup?as=volunteer' : '/signup?as=organization'}>{asOrg ? 'Join as a volunteer instead' : 'Registering an organization?'}</Link></p>
-    </div>
+    </AuthFrame>
   )
 }
 
@@ -210,7 +212,7 @@ export function AuthConfirmedPage() {
     const info = authRedirectMessage(redirectError)
     return (
       <div className="mx-auto flex max-w-md flex-col gap-4">
-        <h1 className="text-2xl font-semibold">{info.title}</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{info.title}</h1>
         <Alert tone="warning">{info.message}</Alert>
         <Link to="/signin" className="text-sm text-brand-700 underline">Go to sign in</Link>
         {info.canResend && <Card><ResendConfirmation /></Card>}
@@ -221,7 +223,7 @@ export function AuthConfirmedPage() {
   if (session) {
     return (
       <div className="mx-auto flex max-w-md flex-col gap-4">
-        <h1 className="text-2xl font-semibold">Email confirmed</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Email confirmed</h1>
         <Alert tone="success">Welcome to Worldkin Roster — you are signed in. Taking you onward…</Alert>
         <div className="flex gap-3">
           <Link to={next} className="text-sm text-brand-700 underline">Continue now</Link>
@@ -232,7 +234,7 @@ export function AuthConfirmedPage() {
   }
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Confirm your email</h1>
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Confirm your email</h1>
       <Alert tone="info">Open the link from your confirmation email to activate your account. If you already confirmed, sign in.</Alert>
       <Link to="/signin" className="text-sm text-brand-700 underline">Go to sign in</Link>
       <Card><ResendConfirmation /></Card>
@@ -246,15 +248,17 @@ export function JoinPage() {
   if (session) return <Navigate to="/dashboard" replace />
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-2 text-2xl font-semibold">Join Worldkin Roster</h1>
+      <h1 className="mb-2 text-2xl font-bold tracking-tight sm:text-3xl">Join Worldkin Roster</h1>
       <p className="mb-6 text-ink-700">How would you like to take part?</p>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Link to="/signup?as=volunteer" className="rounded-lg border border-black/10 bg-white p-5 hover:border-brand-600">
-          <span className="block text-lg font-semibold text-ink-900">Join as a volunteer</span>
+        <Link to="/signup?as=volunteer" className="group rounded-2xl border border-neutral-100 bg-white p-6 shadow-[0_1px_2px_rgba(20,26,34,0.04)] transition-colors hover:border-brand-600">
+          <span aria-hidden className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-700"><Icon name="user" /></span>
+          <span className="flex items-center justify-between font-display text-lg font-bold text-ink-900">Join as a volunteer <Icon name="chevron-right" size={18} className="text-ink-500 group-hover:text-brand-700" /></span>
           <span className="mt-1 block text-sm text-ink-700">Find opportunities, apply, receive offers, join shifts and build a verified record of your hours.</span>
         </Link>
-        <Link to="/signup?as=organization" className="rounded-lg border border-black/10 bg-white p-5 hover:border-brand-600">
-          <span className="block text-lg font-semibold text-ink-900">Join as an organization</span>
+        <Link to="/signup?as=organization" className="group rounded-2xl border border-neutral-100 bg-white p-6 shadow-[0_1px_2px_rgba(20,26,34,0.04)] transition-colors hover:border-brand-600">
+          <span aria-hidden className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-terracotta-500/10 text-terracotta-700"><Icon name="building" /></span>
+          <span className="flex items-center justify-between font-display text-lg font-bold text-ink-900">Join as an organization <Icon name="chevron-right" size={18} className="text-ink-500 group-hover:text-brand-700" /></span>
           <span className="mt-1 block text-sm text-ink-700">Register, get verified, publish opportunities, select volunteers and track attendance.</span>
         </Link>
       </div>
@@ -297,8 +301,8 @@ export function ForgotPasswordPage() {
     }
   }
   return (
-    <div className="mx-auto max-w-md">
-      <h1 className="mb-6 text-2xl font-semibold">Reset your password</h1>
+    <AuthFrame>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight sm:text-3xl">Reset your password</h1>
       <Card>
         {sent ? (
           <Alert tone="success">If an account exists for this email, a password reset link is on its way. The link expires, so use it soon.</Alert>
@@ -310,7 +314,7 @@ export function ForgotPasswordPage() {
         )}
       </Card>
       <p className="mt-4 text-sm text-ink-500"><Link className="text-brand-700 underline" to="/signin">Back to sign in</Link></p>
-    </div>
+    </AuthFrame>
   )
 }
 
@@ -354,7 +358,7 @@ export function ResetPasswordPage() {
   if (redirectError) {
     return (
       <div className="mx-auto flex max-w-md flex-col gap-4">
-        <h1 className="text-2xl font-semibold">This reset link has expired or was already used</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">This reset link has expired or was already used</h1>
         <Alert tone="warning">Request a new password reset link.</Alert>
         <Link to="/forgot-password" className="text-sm text-brand-700 underline">Request a new link</Link>
       </div>
@@ -364,15 +368,15 @@ export function ResetPasswordPage() {
   if (!session) {
     return (
       <div className="mx-auto flex max-w-md flex-col gap-4">
-        <h1 className="text-2xl font-semibold">Set a new password</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Set a new password</h1>
         <Alert tone="info">Open the reset link from your email to continue.</Alert>
         <Link to="/forgot-password" className="text-sm text-brand-700 underline">Request a reset link</Link>
       </div>
     )
   }
   return (
-    <div className="mx-auto max-w-md">
-      <h1 className="mb-6 text-2xl font-semibold">Set a new password</h1>
+    <AuthFrame>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight sm:text-3xl">Set a new password</h1>
       <Card>
         {done ? <Alert tone="success">Password updated. Taking you to your dashboard…</Alert> : (
           <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
@@ -383,7 +387,7 @@ export function ResetPasswordPage() {
           </form>
         )}
       </Card>
-    </div>
+    </AuthFrame>
   )
 }
 
@@ -481,15 +485,15 @@ export function VerifyEmailPage() {
   if (done) {
     return (
       <div className="mx-auto flex max-w-md flex-col gap-4">
-        <h1 className="text-2xl font-semibold">Email verified</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Email verified</h1>
         <Alert tone="success">Welcome to Worldkin Roster{pending?.name ? `, ${pending.name}` : ''}! Your account is active. Taking you to the next step…</Alert>
         <Link className="text-sm text-brand-700 underline" to={next}>Continue now</Link>
       </div>
     )
   }
   return (
-    <div className="mx-auto max-w-md">
-      <h1 className="mb-2 text-2xl font-semibold">Verify your email</h1>
+    <AuthFrame>
+      <h1 className="mb-2 text-2xl font-bold tracking-tight sm:text-3xl">Verify your email</h1>
       <p className="mb-6 text-sm text-ink-700">
         {pending?.name ? <>Welcome, {pending.name}! </> : null}
         {pending?.email
@@ -508,7 +512,7 @@ export function VerifyEmailPage() {
           </div>
           <Button type="submit" busy={busy} disabled={!isCompleteOtp(code)}>{busy ? 'Verifying…' : 'Verify email'}</Button>
         </form>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-black/10 pt-4 text-sm">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-4 text-sm">
           <span className="text-ink-500">Didn’t get it? Check spam, or</span>
           <Button variant="ghost" onClick={onResend} disabled={wait > 0 || busy} aria-live="polite">
             {wait > 0 ? `Resend code in ${wait}s` : 'Resend code'}
@@ -519,6 +523,6 @@ export function VerifyEmailPage() {
         Wrong address? <Link className="text-brand-700 underline" to={changeEmailTo} onClick={() => clearPendingSignup()}>Change email</Link>
         {' · '}<Link className="text-brand-700 underline" to="/signin">Sign in</Link>
       </p>
-    </div>
+    </AuthFrame>
   )
 }
