@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { db } from './supabase'
 import { toAppError } from './errors'
+import { isUuid } from './ids'
 import type { Enums } from './database.types'
 import type { CompensationType, SelectionMode } from './platform'
 
@@ -46,7 +47,7 @@ export function getRecentEvents(now: number, opts: { days?: number; orgId?: stri
   return list(q.order('starts_at', { ascending: false }).limit(opts.limit ?? 30))
 }
 
-export const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+export { isUuid } from './ids'
 
 /** A malformed id is simply "not found" (never a raw database error). */
 export async function getEvent(id: string) {

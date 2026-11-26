@@ -140,7 +140,7 @@ export function EventDetailPage() {
   if (q.isPending) return <LoadingState label="Loading event" />
   if (q.isError) return <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />
   if (!q.data) {
-    return <EmptyState title="Event not available">It may have been cancelled, or its listing is no longer public. <Link className="text-brand-700 underline" to="/events">See all events</Link></EmptyState>
+    return <><PageHeader title="Event not available" /><EmptyState title="This event can't be shown">It may have been cancelled, or its listing is no longer public. <Link className="text-brand-700 underline" to="/events">See all events</Link></EmptyState></>
   }
   const e = q.data, o = e.opportunities!, org = o.organizations
   const ended = new Date(e.ends_at).getTime() <= now

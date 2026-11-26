@@ -136,31 +136,31 @@ export function AppShell() {
           <Outlet />
         </Suspense>
       </main>
-      <footer className="border-t border-black/10 bg-white">
+      <footer className="bg-forest-900 text-sage-200">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 text-sm sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
           <div>
-            <p className="flex items-center gap-2 font-semibold text-ink-900"><img src="/favicon.svg" alt="" width={20} height={20} />Worldkin Roster</p>
-            <p className="mt-2 text-ink-500">Everyone is kin. Discover opportunities with verified organizations and build a record of experience they confirm.</p>
+            <p className="flex items-center gap-2 font-semibold text-white"><img src="/favicon.svg" alt="" width={20} height={20} />Worldkin Roster</p>
+            <p className="mt-2 text-sage-200/80">Everyone is kin. Discover opportunities with verified organizations and build a record of experience they confirm.</p>
           </div>
           <nav aria-label="Discover" className="flex flex-col gap-2">
-            <p className="font-semibold text-ink-900">Discover</p>
-            <Link className="text-ink-700 hover:underline" to="/explore">Explore opportunities</Link>
-            <Link className="text-ink-700 hover:underline" to="/events">Upcoming events</Link>
-            <Link className="text-ink-700 hover:underline" to="/organizations">Verified organizations</Link>
+            <p className="font-semibold text-white">Discover</p>
+            <Link className="text-brand-50 hover:underline" to="/explore">Explore opportunities</Link>
+            <Link className="text-brand-50 hover:underline" to="/events">Upcoming events</Link>
+            <Link className="text-brand-50 hover:underline" to="/organizations">Verified organizations</Link>
           </nav>
           <nav aria-label="Get started" className="flex flex-col gap-2">
-            <p className="font-semibold text-ink-900">Get started</p>
-            <Link className="text-ink-700 hover:underline" to="/signup?as=volunteer">Join as a volunteer</Link>
-            <Link className="text-ink-700 hover:underline" to="/signup?as=organization">Register an organization</Link>
+            <p className="font-semibold text-white">Get started</p>
+            <Link className="text-brand-50 hover:underline" to="/signup?as=volunteer">Join as a volunteer</Link>
+            <Link className="text-brand-50 hover:underline" to="/signup?as=organization">Register an organization</Link>
           </nav>
           <nav aria-label="Trust and safety" className="flex flex-col gap-2">
-            <p className="font-semibold text-ink-900">Trust &amp; safety</p>
-            <span className="text-ink-500">Organizations are reviewed before they can publish. Hours are confirmed by organization staff.</span>
-            <Link className="text-ink-700 hover:underline" to="/me/complaints">Report a concern</Link>
+            <p className="font-semibold text-white">Trust &amp; safety</p>
+            <span className="text-sage-200/80">Organizations are reviewed before they can publish. Hours are confirmed by organization staff.</span>
+            <Link className="text-brand-50 hover:underline" to="/me/complaints">Report a concern</Link>
           </nav>
         </div>
-        <div className="border-t border-black/5">
-          <p className="mx-auto max-w-6xl px-4 py-4 text-xs text-ink-500 sm:px-6">Worldkin Roster · HACK THE VIBE 2026 · World Problem Solver track</p>
+        <div className="border-t border-white/10">
+          <p className="mx-auto max-w-6xl px-4 py-4 text-xs text-sage-200/80 sm:px-6">Worldkin Roster · HACK THE VIBE 2026 · World Problem Solver track</p>
         </div>
       </footer>
     </div>

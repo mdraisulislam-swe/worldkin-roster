@@ -28,7 +28,16 @@ When a disaster or a food drive needs people, coordinators juggle spreadsheets a
 |---|---|---|
 | Volunteer | anyone who joins as a volunteer | rich profile (skills, languages, availability, photo; phone kept private), search and filter voluntary / stipend-based / paid opportunities, join open shifts or **apply**, accept or decline 72-hour **offers**, withdraw, notifications, verified hours, printable certificates, feedback after verified participation, private complaints |
 | Organization | org admins and coordinators | register with contact details and private verification documents (pending until verified), publish opportunities with compensation and selection mode, review applicants (no contact data exposed), private review notes, select/reject, send/revoke offers for a specific shift, manage shifts, roster and attendance, dashboard, feedback, audit log |
-| Platform admin | Worldkin operators (no public sign-up) | platform overview, verify/reject/suspend organizations after reviewing documents, suspend users, moderate opportunities and feedback, resolve private complaints, audit log |
+| Platform admin | Worldkin operators (no public sign-up) | platform overview, verify/reject/suspend organizations after reviewing documents, suspend users, moderate opportunities and feedback, resolve private complaints, audit log. Today there is **one** admin role (`platform_admin`); splitting it into Super / Verification / Moderation admins is designed in [`docs/proposals/ADMIN_ROLES.md`](docs/proposals/ADMIN_ROLES.md) (migration not applied) |
+
+## Core workflows
+
+1. **Organization:** register → verify email (6-digit code) → add details and private documents → a platform admin verifies it → publish an opportunity with shifts, capacity, compensation and selection mode.
+2. **Volunteer:** discover (search, filters, events) → open sign-up: join a shift, or full → FIFO waitlist · by application: apply → organization reviews → 72 h offer → accept (books the seat or the waitlist atomically) or decline.
+3. **After the shift:** organization staff record attendance → verified hours (append-only) → certificate and experience passport; volunteer can leave feedback.
+4. **Admin:** verify organizations, moderate, handle complaints, read the audit log.
+
+Every state change above is a server-side RPC; the browser cannot set statuses, seats or hours directly.
 
 ## Architecture
 
@@ -57,7 +66,7 @@ The browser never holds a secret key; every permission is enforced by the databa
 - No API role can write roles, organization status, capacity, signups, attendance or audit rows directly.
 - No self-verification of hours (RPC check **and** CHECK constraint); platform admins cannot review their own organization.
 - Consent-based invites that do not reveal whether an email is registered.
-- Proven live: 36 checks across anonymous, volunteer, coordinator and org-admin roles.
+- Proven live: security run 20 PASS + 1 SKIP (L19, needs the Founder's own sign-in), plus application-platform checks S1–S4 and L4–L7 and storage S14 (see `docs/TESTING.md`).
 
 ## Database migrations
 
@@ -99,10 +108,13 @@ Framework Vite, build `npm run build`, output `dist`. Set both variables above f
 | `supabase/migrations/` | schema, RLS, RPCs, deadlock fix (applied in order) |
 | `supabase/tests/` | live A03/A05 scripts and a local PostgreSQL 17 test harness |
 | `supabase/seed/demo_seed.sql` | demo data, every record labelled "(Demo)" |
-| `docs/` | blueprint, database design, testing evidence, requirement coverage |
+| `docs/` | blueprint, database design, testing evidence, requirement coverage, design system (`DESIGN_SYSTEM.md`), feature proposals awaiting approval (`proposals/`) |
 
 ## Known limitations
 
-- Email delivery uses Supabase's built-in mailer (rate limited); production use needs a custom SMTP provider.
-- Notifications are in-app only (no email/SMS); chat, payments and maps are out of scope.
+- Email: custom SMTP (Gmail) is configured in Supabase; Gmail limits volume (~500/day). Code-first verification needs the template in `docs/auth/email-templates/confirm-signup.html` pasted into the dashboard.
+- Notifications are in-app only (no email/SMS). There is no chat or payment processing.
+- **Map:** not implemented. Opportunities store city and country as text (search filters by them); a map needs coordinates and a map library — proposed in `docs/proposals/REVIEWS_AND_LOCATION.md` (wk12).
+- **Admin roles:** one platform-admin role today (see above).
+- Production (`main`) can lag the feature branch; see *Deployment status*.
 - Compensation is information shown to volunteers; Worldkin does not process payments.

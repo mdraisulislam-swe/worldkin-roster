@@ -48,7 +48,17 @@ export function OpportunityPage() {
   })
 
   if (opp.isPending) return <LoadingState />
-  if (opp.isError) return <ErrorState message={toAppError(opp.error).message} onRetry={() => opp.refetch()} />
+  if (opp.isError) {
+    const err = toAppError(opp.error)
+    // A missing, private or malformed listing is a page of its own (with a heading), not a retryable error.
+    if (err.code === 'NOT_FOUND') return (
+      <>
+        <PageHeader title="Opportunity not available" />
+        <EmptyState title="This listing can't be shown">It may have closed, been removed, or the link may be wrong. <Link className="text-brand-700 underline" to="/explore">Explore opportunities</Link></EmptyState>
+      </>
+    )
+    return <ErrorState message={err.message} onRetry={() => opp.refetch()} />
+  }
   const o = opp.data as typeof opp.data & OpportunityExtra
   const byApplication = o.selection_mode === 'application'
   const matches = profile ? matchingSkills(profile.skills, o.skills_wanted) : []

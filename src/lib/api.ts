@@ -5,6 +5,7 @@
  */
 import { db } from './supabase'
 import { AppError, toAppError, unwrap } from './errors'
+import { isUuid } from './ids'
 import { joinKeys } from './idempotency'
 import type { Enums, Json, Tables } from './database.types'
 
@@ -45,7 +46,7 @@ export async function searchOpportunities(p: SearchParams) {
 
 export async function getOpportunity(id: string) {
   // A malformed id is "not available", never a raw database error.
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new AppError('This opportunity is not available.', 'NOT_FOUND')
+  if (!isUuid(id)) throw new AppError('This opportunity is not available.', 'NOT_FOUND')
   const row = unwrap(
     await db().from('opportunities').select('*, organizations(id, name, slug, status, website)').eq('id', id).maybeSingle(),
   )
@@ -126,6 +127,7 @@ export async function createOrganization(v: {
 }
 
 export async function getOrganization(orgId: string) {
+  if (!isUuid(orgId)) throw new AppError('Organization not found or not accessible.', 'NOT_FOUND')
   const row = unwrap(await db().from('organizations').select('*').eq('id', orgId).maybeSingle())
   if (!row) throw new AppError('Organization not found or not accessible.', 'NOT_FOUND')
   return row
@@ -175,6 +177,7 @@ export async function createShift(v: {
 }
 
 export async function getShift(shiftId: string) {
+  if (!isUuid(shiftId)) throw new AppError('Shift not found or not accessible.', 'NOT_FOUND')
   const row = unwrap(await db().from('shifts').select('*, opportunities(id, title)').eq('id', shiftId).maybeSingle())
   if (!row) throw new AppError('Shift not found or not accessible.', 'NOT_FOUND')
   return row
