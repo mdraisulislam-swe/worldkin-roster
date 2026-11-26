@@ -6,7 +6,27 @@ Last updated: 26 Nov 2026 · branch `feature/applications-platform`
 **Evidence levels:** *Live* = live Supabase project through its public API, or the production URL · *Local DB* = PostgreSQL 17.5 (PGlite) suites in `supabase/tests/local-pglite/` · *Unit* = vitest · *Browser* = production build in a browser.
 IMPLEMENTED ≠ TESTED ≠ VERIFIED ≠ DEPLOYED.
 
-> **Current blocker:** migrations `wk06` (applications platform) and `wk07` (storage) are prepared and tested locally but **not applied** to the live project — applying needs owner approval. Until then the new features cannot be verified live, and this branch must not be deployed (its frontend calls the new RPCs).
+> **Status update (26 Nov 2026, evening). This supersedes older notes in the table below.**
+> - `wk06` and `wk07` **are applied** to project `ekkvwgohpzliwbmjnrth`. The recorded SQL is byte-identical to the committed files.
+> - Live evidence after applying (`docs/evidence/live_wk06/`, `live_wk07/`):
+>   - applications run ×3, A05 run ×3 and the security run: all PASS;
+>   - storage S14 PASS.
+> - Read-only checks on 26 Nov:
+>   - RLS is enabled on 17/17 public tables (28 policies);
+>   - every SECURITY DEFINER function has a fixed `search_path`.
+> - Email: a sign-up after Gmail SMTP was enabled was confirmed by link 37 s after sending (Auth logs, 09:55 UTC). **Real email E2E: PASS.**
+> - **Production frontend** is still `e616aad` (pre-wk06 UI). It works against the current database: Explore returns results, and RPC signatures were checked compatible.
+> - **Feature branch** (`109cab1`+) is on a Vercel Preview. Its new pages have **not** been viewed in a browser while signed in.
+>
+> | Row | Item | Previous status | Now |
+> |---|---|---|---|
+> | 6, 19 | Applications, offers, hiring lifecycle | Local DB only | **Verified live (API):** apps L1–L10, C1–C3 |
+> | 20 | Offer acceptance uses the same capacity core | Offer path not live | **Verified live:** last-seat race, 1 confirmed + 1 waitlisted |
+> | 26 | Duplicate prevention for applications and acceptance | Joins only | **Verified live:** 5 parallel applications → 1 row; triple accept → 1 signup |
+> | 37–40 | RLS, isolation, privacy and RPC security on the new tables | Not live | **Verified live:** apps L4–L7, S1–S4; storage S14 |
+> | 44, 46 | Idempotent acceptance; concurrency testing | Accept not live | **Verified live:** apps C3, A05 runs 1–3 |
+> | 8, 30–31 | New dashboards, mobile and tablet | — | **Implemented, not browser-verified** (needs a signed-in Preview check) |
+> | 41 | L19 (admin cannot escalate or suspend admins) | BLOCKED | Still BLOCKED (needs a Founder sign-in) |
 
 | # | Requirement | Implementation | Database | Evidence | Status |
 |---|---|---|---|---|---|
@@ -71,7 +91,7 @@ IMPLEMENTED ≠ TESTED ≠ VERIFIED ≠ DEPLOYED.
 
 ## What would make every item COMPLETE AND VERIFIED
 
-1. Owner approval to apply `wk06` and `wk07` to `ekkvwgohpzliwbmjnrth`; regenerate `database.types.ts`.
-2. Run `live_applications_check.mjs` (×3), `concurrency_check.mjs` and `live_security_check.mjs` again.
+1. ~~Apply wk06/wk07~~ (done), ~~live re-runs~~ (done, all PASS).
+2. A signed-in browser check of the Preview: volunteer and organization dashboards, Experience Passport.
 3. Browser journeys on a preview deployment: volunteer (profile → apply → offer → accept), organization (register → upload documents → verify → publish → review → offer → attendance), admin (verify, moderate, complaints, feedback, suspension) — the admin journey needs the Founder's sign-in.
 4. Tablet (768 px) pass.

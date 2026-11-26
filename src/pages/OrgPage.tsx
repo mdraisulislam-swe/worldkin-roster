@@ -9,6 +9,9 @@ import { Alert, CapacityMeter, Card, EmptyState, ErrorState, LoadingState, PageH
 import { DashboardNav } from '../components/DashboardNav'
 import { orgNav } from '../lib/nav'
 import { getOrgApplications, getOrgFeedback } from '../lib/platform'
+import { groupByDay } from '../lib/dashboard'
+
+const timeOnly = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' })
 
 /** Organization dashboard (M05 aggregates) + opportunity list for staff. */
 export function OrgPage() {
@@ -30,6 +33,11 @@ export function OrgPage() {
   if (org.isError) return <ErrorState message={toAppError(org.error).message} onRetry={() => org.refetch()} />
   const o = org.data
   const linkBtn = 'rounded-md border border-black/15 bg-white px-3.5 py-2 text-sm font-medium hover:bg-black/5'
+  // Next scheduled shifts across this organization's opportunities (already loaded; no extra query).
+  const nextShifts = (opps.data ?? [])
+    .flatMap((op) => op.shifts.filter((sh) => sh.status === 'scheduled' && new Date(sh.starts_at).getTime() > now).map((sh) => ({ ...sh, title: op.title })))
+    .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
+    .slice(0, 8)
 
   return (
     <>
@@ -83,6 +91,27 @@ export function OrgPage() {
           </div>
         )}
       </section>
+
+      {nextShifts.length > 0 && (
+        <section aria-labelledby="agenda-h" className="mb-8">
+          <h2 id="agenda-h" className="mb-3 text-lg font-semibold">Coming up</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {groupByDay(nextShifts, (x) => x.starts_at, now).map((day) => (
+              <Card key={day.key}>
+                <h3 className="mb-2 text-sm font-semibold text-ink-700">{day.label}</h3>
+                <ul className="flex flex-col divide-y divide-black/5">
+                  {day.items.map((sh) => (
+                    <li key={sh.id} className="flex items-center justify-between gap-3 py-2">
+                      <span className="min-w-0 text-sm"><span className="font-medium tabular-nums">{timeOnly.format(new Date(sh.starts_at))}</span> · {sh.title}</span>
+                      <Link to={`/org/${orgId}/shifts/${sh.id}`} className="shrink-0 text-sm text-brand-700 underline">Manage</Link>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section aria-labelledby="opps-h">
         <h2 id="opps-h" className="mb-3 text-lg font-semibold">Opportunities</h2>

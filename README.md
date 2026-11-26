@@ -8,6 +8,16 @@ A volunteer mobilization platform: verified organizations publish shifts, volunt
 - Requirement coverage with evidence: [`docs/REQUIREMENTS_COVERAGE.md`](docs/REQUIREMENTS_COVERAGE.md)
 - Test results (local and live): [`docs/TESTING.md`](docs/TESTING.md)
 
+## Deployment status (26 Nov 2026)
+
+| Environment | Build | What it contains |
+|---|---|---|
+| Production — https://worldkin-roster.vercel.app | `main` @ `e616aad` | Core platform: verified organizations, opportunities, capacity-safe shifts with waitlist, attendance, verified hours, certificates, admin |
+| Preview (Vercel, team-protected) | `feature/applications-platform` | Plus: applications → 72 h offers, complaints, feedback, notifications, experience passport, role dashboards, email-code verification, reliability layer |
+| Database | wk01–wk07 applied | Shared by both environments; see `docs/REQUIREMENTS_COVERAGE.md` for live evidence |
+
+The feature branch is merged to `main` only after a signed-in browser check of its Preview.
+
 ## The problem
 
 When a disaster or a food drive needs people, coordinators juggle spreadsheets and chat groups: shifts overfill, the same person books two places at once, no-shows go unrecorded, and volunteers cannot prove the hours they gave. Worldkin Roster turns that into one reliable roster.

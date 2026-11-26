@@ -29,3 +29,13 @@ describe('email confirmation redirect', () => {
     expect(hasAuthFragment('#main')).toBe(false)
   })
 })
+
+describe('sign-in return path keeps the query string', () => {
+  it('allows a same-site path with a query', () => {
+    expect(safeNext('/me/complaints?org=a&opportunity=b')).toBe('/me/complaints?org=a&opportunity=b')
+  })
+  it('still refuses other sites', () => {
+    expect(safeNext('//evil.example/?x=1')).toBe('/me')
+    expect(safeNext('https://evil.example/me')).toBe('/me')
+  })
+})

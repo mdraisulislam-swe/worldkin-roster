@@ -85,7 +85,8 @@ export function HomePage() {
 
       <section aria-labelledby="how-h" className="grid gap-8 rounded-xl border border-black/10 bg-white p-6 shadow-sm sm:p-8 lg:grid-cols-2">
         <div>
-          <h2 id="how-h" className="text-2xl font-semibold tracking-tight">How it works for volunteers</h2>
+          <h2 id="how-h" className="text-2xl font-semibold tracking-tight">From first search to verified experience</h2>
+          <p className="mt-2 text-ink-700">One profile for volunteering, stipend-based and paid roles. Every hour on your record is confirmed by the organization — never self-reported.</p>
           <ol className="mt-4 flex flex-col gap-3">
             {VOLUNTEER_STEPS.map((s, i) => (
               <li key={s.title} className="flex gap-3">
@@ -132,8 +133,10 @@ function Listing({ id, title, more, q, now, empty }: {
 const FEATURED_CAUSES = ['food_security', 'disaster_response', 'refugee_support', 'education', 'health', 'climate', 'environment', 'community_development'] as const
 
 const VOLUNTEER_STEPS = [
-  { title: 'Find', text: 'Search by cause, place, skill or compensation type, and see deadlines and open spots at a glance.' },
-  { title: 'Join or apply', text: 'Join open shifts instantly, or apply — selected volunteers get an offer to accept within 72 hours.' },
-  { title: 'Show up', text: 'Seats are capacity-safe with a fair first-come waitlist; add shifts to your calendar.' },
-  { title: 'Get verified', text: 'The organization confirms your hours — your record and certificates build over time.' },
+  { title: 'Discover', text: 'Search verified organizations by cause, place, skill or compensation type — paid, stipend and voluntary roles are always labelled.' },
+  { title: 'Apply', text: 'Join open shifts instantly, or apply with your profile where the organization selects volunteers.' },
+  { title: 'Get selected', text: 'Selected applicants receive an offer to accept within 72 hours; seats are capacity-safe with a fair waitlist.' },
+  { title: 'Participate', text: 'See your agenda, add shifts to your calendar and get updates in one place.' },
+  { title: 'Get verified', text: 'Organization staff confirm attendance and hours. You cannot record your own hours.' },
+  { title: 'Build your passport', text: 'Verified experience and certificates collect in a printable experience passport.' },
 ]

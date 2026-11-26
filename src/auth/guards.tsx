@@ -8,7 +8,8 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const { loading, session } = useAuth()
   const location = useLocation()
   if (loading) return <LoadingState label="Checking your session" />
-  if (!session) return <Navigate to={`/signin?next=${encodeURIComponent(location.pathname)}`} replace />
+  // Keep the query string (e.g. a listing being reported); safeNext() still allows same-site paths only.
+  if (!session) return <Navigate to={`/signin?next=${encodeURIComponent(location.pathname + location.search)}`} replace />
   return <>{children}</>
 }
 

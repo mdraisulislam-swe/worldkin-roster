@@ -84,6 +84,10 @@ export function OpportunityPage() {
               : <p className="text-sm text-ink-700"><span className="font-medium">{COMPENSATION_LABELS[o.compensation_type]}:</span> {o.compensation_details}</p>}
             <p className="mt-2 text-sm text-ink-500">{byApplication ? 'Selection by application: the organization reviews applicants and sends offers.' : 'Open sign-up: join any shift with free seats.'}</p>
             {o.moderation_reason && <div className="mt-3"><Alert tone="warning">Closed by Worldkin moderators: {o.moderation_reason}</Alert></div>}
+            <p className="mt-3 border-t border-black/5 pt-3 text-xs text-ink-500">
+              Something misleading about this listing (pay, location, organization)?{' '}
+              <Link className="text-brand-700 underline" to={`/me/complaints?org=${o.org_id}&opportunity=${o.id}`}>Report it to Worldkin moderators</Link>.
+            </p>
           </Card>
           {(o.skills_wanted.length > 0 || o.requirements) && (
             <Card>
