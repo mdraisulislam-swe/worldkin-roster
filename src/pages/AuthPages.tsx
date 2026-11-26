@@ -8,6 +8,7 @@ import { toAppError } from '../lib/errors'
 import { authRedirectMessage, hasAuthFragment, readAuthRedirectError, safeNext, type AuthRedirectError } from '../lib/authRedirect'
 import { fieldErrors, signInSchema, signUpSchema } from '../lib/validation'
 import { supabase } from '../lib/supabase'
+import { dashboardPath } from '../lib/dashboard'
 
 /**
  * Sends a new confirmation email. The reply is the same whether or not the
@@ -266,10 +267,8 @@ export function DashboardRedirect() {
   const { loading, session, profile, memberships, isPlatformAdmin } = useAuth()
   if (!loading && !session) return <Navigate to="/signin" replace />
   if (loading || !profile) return <LoadingState label="Opening your dashboard" />
-  if (isPlatformAdmin) return <Navigate to="/admin" replace />
-  if (memberships[0]) return <Navigate to={'/org/' + memberships[0].org_id} replace />
-  if (session?.user.user_metadata?.signup_intent === 'organization') return <Navigate to="/orgs/new" replace />
-  return <Navigate to="/me" replace />
+  const to = dashboardPath({ isPlatformAdmin, orgIds: memberships.map((m) => m.org_id), signupIntent: session?.user.user_metadata?.signup_intent })
+  return <Navigate to={to} replace />
 }
 
 const RESET_PATH = '/auth/reset'

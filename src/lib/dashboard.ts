@@ -38,3 +38,16 @@ export function summarizeApplications(apps: MyApplication[], now: number) {
 export function firstName(fullName: string | null | undefined): string {
   return (fullName ?? '').trim().split(/\s+/)[0] ?? ''
 }
+
+/**
+ * Where "Dashboard" leads after sign-in. Staff of several organizations choose one
+ * (no silent default); the organization is always taken from the URL, and every
+ * page is still authorised by RLS/RPC checks, so this only affects navigation.
+ */
+export function dashboardPath(o: { isPlatformAdmin: boolean; orgIds: string[]; signupIntent?: unknown }): string {
+  if (o.isPlatformAdmin) return '/admin'
+  if (o.orgIds.length > 1) return '/orgs'
+  if (o.orgIds.length === 1) return '/org/' + o.orgIds[0]
+  if (o.signupIntent === 'organization') return '/orgs/new'
+  return '/me'
+}

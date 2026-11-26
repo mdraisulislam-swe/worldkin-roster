@@ -13,7 +13,7 @@ import { getOrgApplications, getOrgFeedback } from '../lib/platform'
 /** Organization dashboard (M05 aggregates) + opportunity list for staff. */
 export function OrgPage() {
   const { orgId = '' } = useParams()
-  const { roleIn } = useAuth()
+  const { roleIn, memberships } = useAuth()
   const isAdmin = roleIn(orgId) === 'org_admin'
   const now = useNow()
   const org = useQuery({ queryKey: ['org', orgId], queryFn: () => getOrganization(orgId) })
@@ -40,6 +40,7 @@ export function OrgPage() {
           <>
             {o.status === 'verified' && <Link to={`/org/${orgId}/opportunities/new`} className="rounded-md bg-brand-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-800">New opportunity</Link>}
             {o.status === 'verified' && <Link to={`/organizations/${o.slug}`} className={linkBtn}>Public page</Link>}
+            {memberships.length > 1 && <Link to="/orgs" className={linkBtn}>Switch organization</Link>}
           </>
         }
       />

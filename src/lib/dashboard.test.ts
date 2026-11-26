@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { firstName, profileCompletion, summarizeApplications } from './dashboard'
+import { dashboardPath, firstName, profileCompletion, summarizeApplications } from './dashboard'
 import type { MyApplication } from './platform'
 
 const app = (over: Partial<MyApplication>): MyApplication => ({
@@ -33,5 +33,17 @@ describe('volunteer dashboard helpers', () => {
   it('extracts a first name safely', () => {
     expect(firstName('  Nadia  Rahman ')).toBe('Nadia')
     expect(firstName(null)).toBe('')
+  })
+})
+
+describe('dashboard destination', () => {
+  it('lets staff of several organizations choose instead of opening the first one', () => {
+    expect(dashboardPath({ isPlatformAdmin: false, orgIds: ['a', 'b'] })).toBe('/orgs')
+    expect(dashboardPath({ isPlatformAdmin: false, orgIds: ['a'] })).toBe('/org/a')
+  })
+  it('keeps admin, new-organization and volunteer routing', () => {
+    expect(dashboardPath({ isPlatformAdmin: true, orgIds: ['a', 'b'] })).toBe('/admin')
+    expect(dashboardPath({ isPlatformAdmin: false, orgIds: [], signupIntent: 'organization' })).toBe('/orgs/new')
+    expect(dashboardPath({ isPlatformAdmin: false, orgIds: [], signupIntent: 'admin' })).toBe('/me')
   })
 })
