@@ -8,6 +8,8 @@ import {
 } from '../lib/platform'
 import { toAppError } from '../lib/errors'
 import { formatDateTime } from '../lib/format'
+import { getAuditLog } from '../lib/api'
+import { Icon } from '../components/Icon'
 import { useDialog } from '../components/dialog'
 import { DocLink } from './OrgPlatformPages'
 import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, Stat, StatusBadge, TextField } from '../components/ui'
@@ -17,27 +19,68 @@ type Notice = { tone: 'success' | 'error'; text: string } | null
 
 export function AdminOverviewPage() {
   const q = useQuery({ queryKey: ['admin-overview'], queryFn: getAdminOverview })
+  // Latest platform-wide audit entries (same table and RLS as the Audit log page; small, separate key).
+  const recent = useQuery({ queryKey: ['audit', 'all', 'recent'], queryFn: () => getAuditLog(undefined, 5) })
+  const d = q.data
+  const queue = d ? ([
+    [d.organizations_pending, `organization${d.organizations_pending === 1 ? '' : 's'} awaiting verification`, '/admin/organizations', 'shield-check'],
+    [d.complaints_open, `open complaint${d.complaints_open === 1 ? '' : 's'}`, '/admin/complaints', 'flag'],
+    [d.suspended_users, `suspended user${d.suspended_users === 1 ? '' : 's'}`, '/admin/users', 'users'],
+  ] as const) : []
   return (
-    <>
+    <div className="flex flex-col gap-6 [&>*:first-child]:mb-0">
       <PageHeader title="Platform administration" subtitle="Live platform statistics. Every action here is enforced and audited by the database." />
       {q.isPending && <LoadingState />}
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}
-      {q.data && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="Users" value={q.data.users} />
-          <Stat label="Suspended users" value={q.data.suspended_users} />
-          <Stat label="Organizations pending" value={<Link className="underline" to="/admin/organizations">{q.data.organizations_pending}</Link>} />
-          <Stat label="Verified organizations" value={q.data.organizations_verified} />
-          <Stat label="Published opportunities" value={q.data.opportunities_published} />
-          <Stat label="Active applications" value={q.data.applications_active} />
-          <Stat label="Open offers" value={q.data.offers_pending} />
-          <Stat label="Confirmed places" value={q.data.signups_confirmed} />
-          <Stat label="Open complaints" value={<Link className="underline" to="/admin/complaints">{q.data.complaints_open}</Link>} />
-          <Stat label="Published feedback" value={q.data.feedback_published} />
-          <Stat label="Verified hours" value={Number(q.data.verified_hours).toLocaleString()} />
-        </div>
+      {d && (
+        <>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Stat icon="users" label="Users" value={d.users} caption={`${d.suspended_users} suspended`} />
+            <Stat icon="shield-check" label="Pending verification" value={<Link className="hover:underline" to="/admin/organizations">{d.organizations_pending}</Link>} caption={`${d.organizations_verified} verified`} />
+            <Stat icon="flag" label="Open complaints" value={<Link className="hover:underline" to="/admin/complaints">{d.complaints_open}</Link>} caption="awaiting a response" />
+            <Stat icon="briefcase" label="Published opportunities" value={d.opportunities_published} caption={`${d.applications_active} active applications`} />
+          </div>
+          <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <Card className="flex flex-col sm:p-7">
+              <h2 className="mb-2 text-xl font-semibold">Your queue</h2>
+              {queue.every(([n]) => n === 0) && <p className="border-t border-neutral-100 py-3 text-sm text-ink-500">Nothing waiting. New verifications and complaints appear here.</p>}
+              {queue.filter(([n]) => n > 0).map(([n, text, to, icon]) => (
+                <Link key={to} to={to} className="flex items-center justify-between gap-3 border-t border-neutral-100 py-3 text-sm hover:text-brand-700">
+                  <span className="flex items-center gap-2"><Icon name={icon} size={16} className="text-ink-500" /><strong className="tabular-nums">{n}</strong> {text}</span>
+                  <Icon name="chevron-right" size={16} className="text-ink-500" />
+                </Link>
+              ))}
+            </Card>
+            <Card className="flex flex-col sm:p-7">
+              <h2 className="mb-2 text-xl font-semibold">Platform activity</h2>
+              {([
+                ['Open offers', d.offers_pending],
+                ['Confirmed places', d.signups_confirmed],
+                ['Published feedback', d.feedback_published],
+                ['Verified hours', Number(d.verified_hours).toLocaleString()],
+              ] as const).map(([k, v]) => (
+                <div key={k} className="flex items-center justify-between border-t border-neutral-100 py-2 text-sm"><span className="text-ink-700">{k}</span><span className="font-semibold tabular-nums text-ink-900">{v}</span></div>
+              ))}
+            </Card>
+          </div>
+        </>
       )}
-    </>
+      <Card className="flex flex-col sm:p-7">
+        <div className="mb-2 flex items-end justify-between gap-3">
+          <h2 className="text-xl font-semibold">Recent administrative activity</h2>
+          <Link to="/admin/audit" className="text-sm font-semibold text-brand-700 hover:underline">Audit log</Link>
+        </div>
+        {recent.isPending && <LoadingState label="Loading activity" />}
+        {recent.isError && <p className="text-sm text-ink-500">Activity could not be loaded.</p>}
+        {recent.data?.length === 0 && <p className="text-sm text-ink-500">No changes recorded yet.</p>}
+        {recent.data?.map((a) => (
+          <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 py-2.5 text-sm">
+            <span className="flex items-center gap-2"><Icon name="list" size={14} className="text-ink-500" /><strong className="font-semibold">{a.action}</strong> · {a.entity_type}</span>
+            <span className="text-xs text-ink-500">{formatDateTime(a.occurred_at)}</span>
+          </div>
+        ))}
+      </Card>
+    </div>
   )
 }
 

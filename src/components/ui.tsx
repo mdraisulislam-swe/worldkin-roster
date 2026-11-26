@@ -166,12 +166,14 @@ export function Card({ children, className }: { children: ReactNode; className?:
   return <div className={cx('rounded-xl border border-neutral-100 bg-white p-5 shadow-[0_1px_2px_rgba(20,26,34,0.04)]', className)}>{children}</div>
 }
 
-export function Stat({ label, value }: { label: string; value: ReactNode }) {
+/** Dashboard stat tile (prototype "kpi"): icon + label, large number, optional caption. Values always come from the database. */
+export function Stat({ label, value, icon, caption }: { label: string; value: ReactNode; icon?: IconName; caption?: ReactNode }) {
   return (
-    <Card>
-      <p className="text-xs font-medium uppercase tracking-wide text-ink-500">{label}</p>
-      <p className="mt-1 font-display text-3xl font-bold tabular-nums text-ink-900">{value}</p>
-    </Card>
+    <div className="flex flex-col gap-1.5 rounded-xl border border-neutral-100 bg-white px-5 py-[18px] shadow-[0_1px_2px_rgba(20,26,34,0.04)]">
+      <span className="flex items-center gap-1.5 text-[13px] font-medium text-ink-500">{icon && <Icon name={icon} size={16} />}{label}</span>
+      <span className="font-display text-[32px] font-bold leading-[1.1] tabular-nums text-ink-900">{value}</span>
+      {caption && <span className="text-[12.5px] text-ink-500">{caption}</span>}
+    </div>
   )
 }
 
@@ -219,7 +221,7 @@ export function CapacityMeter({ confirmed, capacity, waitlisted }: { confirmed: 
   const pct = Math.min(100, Math.round((confirmed / Math.max(capacity, 1)) * 100))
   return (
     <div className="min-w-32">
-      <div className="h-2 w-full overflow-hidden rounded-full bg-black/10" role="progressbar" aria-valuemin={0} aria-valuemax={capacity} aria-valuenow={confirmed} aria-label="Seats filled">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-100" role="progressbar" aria-valuemin={0} aria-valuemax={capacity} aria-valuenow={confirmed} aria-label="Seats filled">
         <div className="h-full bg-brand-600" style={{ width: `${pct}%` }} />
       </div>
       <p className="mt-1 text-xs text-ink-500">
