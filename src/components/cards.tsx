@@ -3,6 +3,7 @@ import { CAUSE_LABELS, MODE_LABELS, formatDateTime, seatsSummary, spotsLabel, st
 import { COMPENSATION_LABELS, ORG_TYPE_LABELS, type CompensationType, type OpportunityCard, type OrgCard } from '../lib/platform'
 import { Card } from './ui'
 import { Icon } from './Icon'
+import { CoverBand } from './CoverBand'
 
 const pill = 'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold'
 /** Neutral fact badge (how to join, timing, seats): outline, no colour, so only pay type and urgency are coloured. */
@@ -22,15 +23,19 @@ export function OpportunityCardView({ o, now }: { o: OpportunityCard; now: numbe
   const spots = spotsLabel(o.open_spots, o.upcoming_shifts)
   const deadlineSoon = o.application_deadline && new Date(o.application_deadline).getTime() - now < 3 * 86_400_000
   return (
-    <Card className="flex h-full flex-col transition-colors hover:border-brand-600/40">
-      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-brand-700">{CAUSE_LABELS[o.cause]} · {MODE_LABELS[o.mode]}</p>
-      <h3 className="mt-1.5 text-[17px] font-bold leading-snug text-ink-900"><Link className="hover:text-brand-700 hover:underline" to={`/opportunities/${o.id}`}>{o.title}</Link></h3>
-      <p className="text-sm text-ink-500">
-        <Link className="hover:underline" to={`/organizations/${o.org_slug}`}>{o.org_name}</Link>
+    <article className="flex h-full flex-col overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-[0_1px_2px_rgba(20,26,34,0.04)] transition-colors hover:border-brand-600/40">
+      <CoverBand cause={o.cause} />
+      <div className="flex flex-1 flex-col p-5">
+      <p className="flex items-center gap-1.5 text-sm text-ink-500">
+        <Link className="truncate hover:underline" to={`/organizations/${o.org_slug}`}>{o.org_name}</Link>
         {/* Public listings exist only for verified organizations (is_opportunity_public). */}
-        <span className="ml-1 inline-flex align-[-3px] text-brand-700" title="Verified by Worldkin"><Icon name="shield-check" size={15} /><span className="sr-only"> verified organization</span></span>
-        {o.city ? ` · ${o.city}` : ''}{o.country_code ? `, ${o.country_code}` : ''}
+        <span className="inline-flex shrink-0 text-brand-700" title="Verified by Worldkin"><Icon name="shield-check" size={15} /><span className="sr-only"> verified organization</span></span>
       </p>
+      <h3 className="mt-1 text-[17px] font-bold leading-snug text-ink-900"><Link className="hover:text-brand-700 hover:underline" to={`/opportunities/${o.id}`}>{o.title}</Link></h3>
+      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-500">
+        <li className="inline-flex items-center gap-1.5"><Icon name="map-pin" size={15} />{[o.city, o.country_code].filter(Boolean).join(', ') || MODE_LABELS[o.mode]}{o.city || o.country_code ? ` · ${MODE_LABELS[o.mode]}` : ''}</li>
+        {o.next_shift_at && <li className="inline-flex items-center gap-1.5"><Icon name="calendar" size={15} />{formatDateTime(o.next_shift_at)}</li>}
+      </ul>
       <div className="mt-3 flex flex-wrap gap-1.5">
         <CompensationBadge type={o.compensation_type} />
         {o.selection_mode === 'application'
@@ -42,11 +47,12 @@ export function OpportunityCardView({ o, now }: { o: OpportunityCard; now: numbe
       <div className="mt-auto pt-4 text-sm text-ink-700"><div className="border-t border-neutral-100 pt-3">
         {o.application_deadline
           ? <p className={deadlineSoon ? 'font-medium text-amber-900' : ''}>Apply by {formatDateTime(o.application_deadline)}</p>
-          : <p>Next shift: {o.next_shift_at ? formatDateTime(o.next_shift_at) : 'none scheduled'}</p>}
+          : !o.next_shift_at && <p>No shift scheduled yet</p>}
         {seatsSummary(o.open_spots, o.upcoming_shifts) && <p className="text-ink-500">{seatsSummary(o.open_spots, o.upcoming_shifts)}</p>}
         {o.compensation_type !== 'voluntary' && o.compensation_details && <p className="text-ink-500">{o.compensation_details}</p>}
       </div></div>
-    </Card>
+      </div>
+    </article>
   )
 }
 

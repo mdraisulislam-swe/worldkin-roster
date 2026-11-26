@@ -52,23 +52,45 @@ export function HomePage() {
       </section>
 
       <section aria-labelledby="stats-h">
-        <h2 id="stats-h" className="sr-only">Platform in numbers</h2>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <h2 id="stats-h" className="text-2xl font-bold tracking-tight">Impact so far</h2>
+          <p className="text-xs text-ink-500">Live counts from the platform database{stats.data ? ` · ${Number(stats.data.verified_hours).toLocaleString()} verified volunteer hours` : ''}</p>
+        </div>
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {([
-            ['Volunteers', stats.data?.volunteers],
-            ['Verified organizations', stats.data?.verified_organizations],
-            ['Active opportunities', stats.data?.active_opportunities],
-            ['Completed events', stats.data?.completed_events],
-            ['Countries', stats.data?.countries],
-            ['Cities', stats.data?.cities],
-          ] as const).map(([label, value]) => (
-            <div key={label} className="rounded-lg border border-black/10 bg-white px-4 py-3.5 shadow-sm">
-              <dt className="text-xs uppercase tracking-wide text-ink-500">{label}</dt>
-              <dd className="mt-1 text-3xl font-semibold tabular-nums text-ink-900">{stats.isPending ? '…' : stats.isError ? '—' : Number(value ?? 0).toLocaleString()}</dd>
+            ['Volunteers', stats.data?.volunteers, 'users', 'registered'],
+            ['Verified organizations', stats.data?.verified_organizations, 'shield-check', 'reviewed before publishing'],
+            ['Active opportunities', stats.data?.active_opportunities, 'briefcase', 'open now'],
+            ['Completed events', stats.data?.completed_events, 'check-circle', 'finished shifts'],
+            ['Countries', stats.data?.countries, 'globe', 'with listings'],
+            ['Cities', stats.data?.cities, 'map-pin', 'with listings'],
+          ] as const).map(([label, value, icon, caption]) => (
+            <div key={label} className="flex flex-col rounded-xl border border-neutral-100 bg-white p-4 shadow-[0_1px_2px_rgba(20,26,34,0.04)]">
+              <dt className="flex items-center gap-2 text-[13px] font-medium text-ink-700"><Icon name={icon} size={16} className="text-brand-700" />{label}</dt>
+              <dd className="mt-2 font-display text-3xl font-bold tabular-nums text-ink-900">{stats.isPending ? '…' : stats.isError ? '—' : Number(value ?? 0).toLocaleString()}</dd>
+              <dd className="text-xs text-ink-500">{caption}</dd>
             </div>
           ))}
         </dl>
-        <p className="mt-2 text-xs text-ink-500">Live counts from the platform database{stats.data ? ` · ${Number(stats.data.verified_hours).toLocaleString()} verified volunteer hours` : ''}.</p>
+      </section>
+
+      {/* Each statement below is enforced by the database (verification gate, row-locked seats, organization-confirmed attendance). */}
+      <section aria-labelledby="why-h">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">Why Worldkin</p>
+        <h2 id="why-h" className="mt-1 text-2xl font-bold tracking-tight">A connected journey, not just a listings board</h2>
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          {([
+            ['shield-check', 'Verified organizations', 'Every organization is reviewed before it can publish, and its trust record is public.'],
+            ['users', 'Fair, capacity-safe selection', 'Seats can never be overbooked; waitlists are first-come and transparent.'],
+            ['award', 'Experience you can prove', 'Hours are confirmed by organization staff — never self-reported — and collect in your passport.'],
+          ] as const).map(([icon, title, text]) => (
+            <div key={title} className="rounded-xl border border-neutral-100 bg-white p-6 shadow-[0_1px_2px_rgba(20,26,34,0.04)]">
+              <span aria-hidden className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-700"><Icon name={icon} /></span>
+              <h3 className="mt-4 text-lg font-bold text-ink-900">{title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-700">{text}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {events.data && events.data.length > 0 && (

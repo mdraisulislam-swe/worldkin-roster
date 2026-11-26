@@ -11,6 +11,8 @@ import { Alert, Button, CapacityMeter, Card, EmptyState, ErrorState, LoadingStat
 import { useDialog } from '../components/dialog'
 import { ApplyPanel } from '../components/ApplyPanel'
 import { CompensationBadge } from '../components/cards'
+import { CoverBand } from '../components/CoverBand'
+import { Icon } from '../components/Icon'
 import { COMPENSATION_LABELS, type OpportunityExtra } from '../lib/platform'
 
 export function OpportunityPage() {
@@ -75,9 +77,18 @@ export function OpportunityPage() {
 
   return (
     <>
+      <CoverBand cause={o.cause} className="mb-6 h-40 rounded-[20px] sm:h-52" />
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        <CompensationBadge type={o.compensation_type} />
+        <span className="inline-flex items-center gap-1 rounded-full border border-neutral-100 bg-white px-2.5 py-0.5 text-xs font-semibold text-ink-700"><Icon name={byApplication ? 'file-text' : 'check'} size={13} />{byApplication ? 'Apply · selection' : 'Instant sign-up'}</span>
+      </div>
       <PageHeader
         title={o.title}
-        subtitle={<>{CAUSE_LABELS[o.cause]} · {MODE_LABELS[o.mode]}{place ? ` · ${place}` : ''}</>}
+        subtitle={<span className="flex flex-wrap gap-x-4 gap-y-1">
+          <span className="inline-flex items-center gap-1.5"><Icon name="map-pin" size={15} />{place || MODE_LABELS[o.mode]}</span>
+          <span className="inline-flex items-center gap-1.5"><Icon name="globe" size={15} />{MODE_LABELS[o.mode]}</span>
+          <span className="inline-flex items-center gap-1.5"><Icon name="heart" size={15} />{CAUSE_LABELS[o.cause]}</span>
+        </span>}
         actions={<Button variant="secondary" onClick={copyLink}>Copy link</Button>}
       />
       <div className="grid gap-6 lg:grid-cols-3">
