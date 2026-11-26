@@ -8,6 +8,8 @@ import { Button, EmptyState, ErrorState, LoadingState } from '../components/ui'
 import { VolunteerNav } from '../components/DashboardNav'
 import { ParticipationSection } from './VolunteerPages'
 import { summarizeExperience, type RecordRow } from '../lib/dashboard'
+import { hoursByMonth } from '../lib/calendarGrid'
+import { HoursChart } from '../components/HoursChart'
 import { COMPENSATION_LABELS, type CompensationType } from '../lib/platform'
 
 const dateOnly = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
@@ -50,6 +52,11 @@ export function RecordPage() {
           <div className="rounded-md bg-brand-50 p-3"><dt className="text-xs text-ink-500">Shifts attended</dt><dd className="text-xl font-semibold">{impact.data.shifts_attended}</dd></div>
           <div className="rounded-md bg-brand-50 p-3"><dt className="text-xs text-ink-500">Organizations</dt><dd className="text-xl font-semibold">{impact.data.organizations_helped}</dd></div>
         </dl>
+      )}
+      {rows.length > 0 && (
+        <section className="mb-8 print:hidden">
+          <HoursChart data={hoursByMonth(rows.map((r) => ({ hours: r.hours, when: r.shifts?.starts_at ?? r.verified_at })), now, 6)} />
+        </section>
       )}
       {experience.length > 0 && (
         <section aria-labelledby="exp-h" className="mb-8">

@@ -18,6 +18,7 @@ const EventsPage = page(() => import('../pages/EventsPages'), 'EventsPage')
 const EventDetailPage = page(() => import('../pages/EventsPages'), 'EventDetailPage')
 const MyShiftsPage = page(() => import('../pages/MyShiftsPage'), 'MyShiftsPage')
 const RecordPage = page(() => import('../pages/RecordPage'), 'RecordPage')
+const CalendarPage = page(() => import('../pages/CalendarPage'), 'CalendarPage')
 const ProfilePage = page(() => import('../pages/ProfilePage'), 'ProfilePage')
 const MyOrgsPage = page(() => import('../pages/OrgListPages'), 'MyOrgsPage')
 const OrgCreatePage = page(() => import('../pages/OrgListPages'), 'OrgCreatePage')
@@ -76,6 +77,7 @@ export const router = createBrowserRouter([
 
       { path: 'me', element: <RequireAuth><MyShiftsPage /></RequireAuth> },
       { path: 'me/record', element: <RequireAuth><RecordPage /></RequireAuth> },
+      { path: 'me/calendar', element: <RequireAuth><CalendarPage /></RequireAuth> },
       { path: 'me/profile', element: <RequireAuth><ProfilePage /></RequireAuth> },
       { path: 'me/applications', element: <RequireAuth><MyApplicationsPage /></RequireAuth> },
       { path: 'me/notifications', element: <RequireAuth><NotificationsPage /></RequireAuth> },

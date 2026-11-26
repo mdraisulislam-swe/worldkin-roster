@@ -4,6 +4,7 @@ export type NavItem = { to: string; label: string; end?: boolean; badge?: number
 export const VOLUNTEER_NAV: NavItem[] = [
   { to: '/me', label: 'Overview & shifts', end: true },
   { to: '/me/applications', label: 'Applications & offers' },
+  { to: '/me/calendar', label: 'Calendar' },
   { to: '/me/record', label: 'Hours & certificates' },
   { to: '/me/notifications', label: 'Notifications' },
   { to: '/me/complaints', label: 'Complaints' },
