@@ -7,20 +7,21 @@ import { Icon, type IconName } from './Icon'
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 
 export function Button({
-  variant = 'primary', busy = false, className, children, disabled, ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'accent'; busy?: boolean }) {
+  variant = 'primary', size = 'md', busy = false, className, children, disabled, ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'accent'; size?: 'md' | 'sm'; busy?: boolean }) {
   return (
     <button
       {...rest}
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       className={cx(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-transparent px-4 text-[15px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-        variant === 'primary' && 'bg-brand-700 text-white hover:bg-brand-800',
+        'inline-flex items-center justify-center gap-2 rounded-lg border font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+        size === 'sm' ? 'min-h-9 px-3 text-sm' : 'min-h-11 px-4 text-[15px]',
+        variant === 'primary' && 'border-transparent bg-brand-700 text-white hover:bg-brand-800',
         variant === 'secondary' && 'border-[#d5d9d2] bg-white text-ink-900 hover:border-brand-600 hover:text-brand-700',
-        variant === 'danger' && 'bg-rose-700 text-white hover:bg-rose-800',
-        variant === 'ghost' && 'text-brand-700 hover:bg-brand-50',
-        variant === 'accent' && 'bg-terracotta-700 text-white hover:brightness-95',
+        variant === 'danger' && 'border-transparent bg-rose-700 text-white hover:bg-rose-800',
+        variant === 'ghost' && 'border-transparent text-brand-700 hover:bg-brand-50',
+        variant === 'accent' && 'border-transparent bg-terracotta-700 text-white hover:brightness-95',
         className,
       )}
     >
@@ -177,45 +178,61 @@ export function Stat({ label, value, icon, caption }: { label: string; value: Re
   )
 }
 
-const STATUS_TONE: Record<string, string> = {
-  confirmed: 'bg-emerald-100 text-emerald-900',
-  attended: 'bg-emerald-100 text-emerald-900',
-  verified: 'bg-emerald-100 text-emerald-900',
-  published: 'bg-emerald-100 text-emerald-900',
-  scheduled: 'bg-emerald-100 text-emerald-900',
-  waitlisted: 'bg-amber-100 text-amber-900',
-  pending: 'bg-amber-100 text-amber-900',
-  draft: 'bg-slate-100 text-slate-800',
-  cancelled: 'bg-slate-100 text-slate-800',
-  closed: 'bg-slate-100 text-slate-800',
-  no_show: 'bg-rose-100 text-rose-900',
-  rejected: 'bg-rose-100 text-rose-900',
-  suspended: 'bg-rose-100 text-rose-900',
-  accepted: 'bg-emerald-100 text-emerald-900',
-  active: 'bg-emerald-100 text-emerald-900',
-  resolved: 'bg-emerald-100 text-emerald-900',
-  selected: 'bg-sky-100 text-sky-900',
-  submitted: 'bg-slate-100 text-slate-800',
-  under_review: 'bg-amber-100 text-amber-900',
-  in_review: 'bg-amber-100 text-amber-900',
-  open: 'bg-amber-100 text-amber-900',
-  withdrawn: 'bg-slate-100 text-slate-800',
-  declined: 'bg-slate-100 text-slate-800',
-  dismissed: 'bg-slate-100 text-slate-800',
-  hidden: 'bg-slate-100 text-slate-800',
-  expired: 'bg-rose-100 text-rose-900',
-  revoked: 'bg-rose-100 text-rose-900',
-  'platform admin': 'bg-violet-100 text-violet-900',
+const GREEN = 'bg-emerald-50 text-emerald-800', AMBER = 'bg-amber-50 text-amber-800', ROSE = 'bg-rose-50 text-rose-700'
+const SKY = 'bg-sky-50 text-sky-800', GREY = 'bg-neutral-100 text-ink-700', BRAND = 'bg-brand-50 text-brand-700'
+const STATUS_STYLE: Record<string, [string, IconName]> = {
+  confirmed: [GREEN, 'check'], accepted: [GREEN, 'check'], published: [GREEN, 'check'], active: [GREEN, 'check'], resolved: [GREEN, 'check'],
+  attended: [GREEN, 'check-circle'], verified: [GREEN, 'shield-check'],
+  waitlisted: [AMBER, 'clock'], pending: [AMBER, 'clock'], under_review: [AMBER, 'clock'], in_review: [AMBER, 'clock'], open: [AMBER, 'flag'],
+  selected: [SKY, 'briefcase'],
+  submitted: [GREY, 'file-text'], draft: [GREY, 'file-text'], closed: [GREY, 'x'], withdrawn: [GREY, 'x'], declined: [GREY, 'x'],
+  dismissed: [GREY, 'x'], hidden: [GREY, 'x'], cancelled: [GREY, 'x'],
+  scheduled: [BRAND, 'calendar'], 'platform admin': [BRAND, 'shield-check'],
+  rejected: [ROSE, 'x-circle'], no_show: [ROSE, 'x-circle'], revoked: [ROSE, 'x-circle'], expired: [ROSE, 'clock'], suspended: [ROSE, 'alert'],
 }
-/** Status is always shown as text + colour (never colour alone). */
+/** Status is always shown as text + icon + colour (never colour alone). */
 export function StatusBadge({ status }: { status: string }) {
   const label = SIGNUP_STATUS_LABELS[status as Enums<'signup_status'>] ?? status.replace(/_/g, ' ')
+  const [tone, icon] = STATUS_STYLE[status] ?? [GREY, 'info']
   return (
-    <span className={cx('inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize', STATUS_TONE[status] ?? 'bg-slate-100 text-slate-800')}>
-      {label}
+    <span className={cx('inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[12.5px] font-semibold capitalize', tone)}>
+      <Icon name={icon} size={14} />{label}
     </span>
   )
 }
+
+/** Initials avatar (prototype "avatar--round"). Decorative: the name is always shown next to it. */
+export function Initials({ name, size = 36 }: { name: string; size?: number }) {
+  const t = name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('') || '·'
+  return (
+    <span aria-hidden className="inline-grid shrink-0 place-items-center rounded-full bg-brand-50 font-display font-bold text-brand-700" style={{ width: size, height: size, fontSize: Math.round(size / 2.6) }}>{t}</span>
+  )
+}
+
+/** Tab bar (prototype "tabs"): filters a list on the same page. Arrow keys move between tabs. */
+export function Tabs<T extends string>({ label, tabs, value, onChange, controls }: {
+  label: string; tabs: { value: T; label: string; count?: number }[]; value: T; onChange: (v: T) => void; controls?: string
+}) {
+  const move = (i: number) => { const t = tabs[(i + tabs.length) % tabs.length]; onChange(t.value); requestAnimationFrame(() => document.getElementById(`tab-${controls ?? label}-${t.value}`)?.focus()) }
+  return (
+    <div role="tablist" aria-label={label} className="flex gap-1 overflow-x-auto border-b border-neutral-100 [scrollbar-width:none]">
+      {tabs.map((t, i) => {
+        const on = t.value === value
+        return (
+          <button key={t.value} id={`tab-${controls ?? label}-${t.value}`} type="button" role="tab" aria-selected={on} aria-controls={controls} tabIndex={on ? 0 : -1}
+            onClick={() => onChange(t.value)}
+            onKeyDown={(e) => { if (e.key === 'ArrowRight') move(i + 1); if (e.key === 'ArrowLeft') move(i - 1) }}
+            className={cx('-mb-px inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 py-2.5 text-[14.5px] font-medium',
+              on ? 'border-brand-700 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-900')}>
+            {t.label}
+            {t.count !== undefined && <span className="rounded-full bg-neutral-100 px-[7px] text-xs leading-5 text-ink-700">{t.count}</span>}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 
 export function CapacityMeter({ confirmed, capacity, waitlisted }: { confirmed: number; capacity: number; waitlisted?: number }) {
   const pct = Math.min(100, Math.round((confirmed / Math.max(capacity, 1)) * 100))

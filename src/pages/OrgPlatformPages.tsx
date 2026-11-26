@@ -14,7 +14,9 @@ import { organizationDetailsSchema, fieldErrors } from '../lib/validation'
 import { useNow } from '../lib/useNow'
 import { useDialog } from '../components/dialog'
 import { OrgLogo } from '../components/cards'
-import { Alert, Button, Card, Checkbox, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge, TextArea, TextField } from '../components/ui'
+import { Alert, Button, Card, Checkbox, EmptyState, ErrorState, Initials, LoadingState, PageHeader, Select, StatusBadge, TextArea, TextField } from '../components/ui'
+import { TABLE } from '../lib/table'
+import { Icon } from '../components/Icon'
 
 const STATUS_FILTERS: { value: '' | ApplicationStatus; label: string }[] = [
   { value: '', label: 'All' }, { value: 'submitted', label: 'New' }, { value: 'under_review', label: 'Under review' },
@@ -41,9 +43,14 @@ export function OrgApplicationsPage() {
   const hiddenClosed = (apps.data?.length ?? 0) - visible.length
 
   return (
-    <>
+    <div className="flex flex-col gap-6 [&>*:first-child]:mb-0">
       <PageHeader title="Applicants & offers" subtitle="Review applicants, select or reject, and send time-limited offers for a specific shift." />
-      <Card className="mb-4">
+      {/* Enforced by the database: org_applications returns no phone, email or address (live check L7). */}
+      <div className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+        <Icon name="shield-check" size={18} />
+        <span>Applicant phone, email and address are never shown. You see the profile, skills and verified hours they share when applying.</span>
+      </div>
+      <Card>
         <form className="grid gap-3 sm:grid-cols-3" onSubmit={(e) => {
           e.preventDefault(); const f = new FormData(e.currentTarget); const n = new URLSearchParams()
           for (const k of ['opportunity', 'status']) { const v = String(f.get(k) ?? ''); if (v) n.set(k, v) }
@@ -59,23 +66,41 @@ export function OrgApplicationsPage() {
           </div>
         </form>
       </Card>
-      <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
+      <div aria-live="polite" className="empty:-mt-6">{notice && <Alert tone={notice.tone}>{notice.text}</Alert>}</div>
       {apps.isPending && <LoadingState label="Loading applicants" />}
       {apps.isError && <ErrorState message={toAppError(apps.error).message} onRetry={() => apps.refetch()} />}
       {apps.data && visible.length === 0 && (
         <EmptyState title="No applications here yet">Publish an opportunity with “Application” selection to receive applicants.</EmptyState>
       )}
       {apps.data && visible.length > 0 && (
-        <ul className="flex flex-col gap-3">
-          {visible.map((a) => <ApplicantCard key={a.application_id} a={a} onDone={onDone} onError={onError} />)}
-        </ul>
+        <div>
+          <div className={TABLE.wrap}>
+            <table className={TABLE.table}>
+              <caption className="sr-only">Applicants</caption>
+              <thead className={TABLE.thead}>
+                <tr>
+                  <th scope="col" className={TABLE.th}>Applicant</th>
+                  <th scope="col" className={TABLE.th}>Verified hours</th>
+                  <th scope="col" className={TABLE.th}>Skills</th>
+                  <th scope="col" className={TABLE.th}>Applied</th>
+                  <th scope="col" className={TABLE.th}>Status</th>
+                  <th scope="col" className={TABLE.th}><span className="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody className={TABLE.tbody}>
+                {visible.map((a) => <ApplicantRow key={a.application_id} a={a} onDone={onDone} onError={onError} />)}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-xs text-ink-500">Showing {visible.length} of {apps.data.length}{hiddenClosed > 0 ? ` · ${hiddenClosed} for closed opportunities hidden — tick “Include closed opportunities” to see them` : ''}</p>
+        </div>
       )}
-      {hiddenClosed > 0 && <p className="mt-3 text-sm text-ink-500">{hiddenClosed} application{hiddenClosed === 1 ? '' : 's'} for closed opportunities hidden — tick “Include closed opportunities” to see them.</p>}
-    </>
+      {apps.data && visible.length === 0 && hiddenClosed > 0 && <p className="text-sm text-ink-500">{hiddenClosed} application{hiddenClosed === 1 ? '' : 's'} for closed opportunities hidden — tick “Include closed opportunities” to see them.</p>}
+    </div>
   )
 }
 
-function ApplicantCard({ a, onDone, onError }: { a: OrgApplication; onDone: (t: string, tone?: 'success' | 'info') => void; onError: (e: unknown) => void }) {
+function ApplicantRow({ a, onDone, onError }: { a: OrgApplication; onDone: (t: string, tone?: 'success' | 'info') => void; onError: (e: unknown) => void }) {
   const dialog = useDialog()
   const now = useNow()
   const { orgId = '' } = useParams()
@@ -88,25 +113,44 @@ function ApplicantCard({ a, onDone, onError }: { a: OrgApplication; onDone: (t: 
   const pendingOffer = a.offer_status === 'pending' && a.offer_expires_at && new Date(a.offer_expires_at).getTime() > now
   const futureShifts = (shifts.data ?? []).filter((s) => s.status === 'scheduled' && new Date(s.starts_at).getTime() > now)
 
+  const detailsId = `applicant-${a.application_id}`
+  const location = [a.applicant_city, a.applicant_country].filter(Boolean).join(', ') || 'Location not shared'
   return (
-    <li>
-      <Card>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-semibold">{a.applicant_name}</p>
-            <p className="text-sm text-ink-500">{[a.applicant_city, a.applicant_country].filter(Boolean).join(', ') || 'Location not shared'} · applied {formatDateTime(a.created_at)} · {a.opportunity_title}</p>
-            <p className="text-sm text-ink-700">{Number(a.applicant_verified_hours)} verified hours on Worldkin{a.applicant_skills.length ? ` · skills: ${a.applicant_skills.join(', ')}` : ''}</p>
+    <>
+      <tr className={TABLE.tr}>
+        <td className={TABLE.td}>
+          <div className="flex min-w-0 items-center gap-3">
+            <Initials name={a.applicant_name} />
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-ink-900">{a.applicant_name}</p>
+              <p className="truncate text-xs text-ink-500">{location} · {a.opportunity_title}</p>
+              <p className="text-xs text-ink-500 md:hidden">{Number(a.applicant_verified_hours)} verified h · applied {formatDateTime(a.created_at)}</p>
+              {pendingOffer && <p className="text-xs text-amber-800 md:hidden">Offer expires {formatDateTime(a.offer_expires_at!)}</p>}
+              {a.offer_status === 'accepted' && <p className="text-xs text-emerald-800 md:hidden">Shift {a.shift_starts_at ? formatDateTime(a.shift_starts_at) : ''} · place: {a.signup_status}</p>}
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={a.offer_status === 'accepted' ? 'accepted' : a.status} />
-            <span className="sr-only">{APPLICATION_STATUS_LABELS[a.status]}</span>
-            <Button variant="ghost" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'Hide details' : 'Review'}</Button>
-          </div>
-        </div>
-        {a.offer_status === 'accepted' && <p className="mt-2 text-sm text-emerald-900">Offer accepted · shift {a.shift_starts_at ? formatDateTime(a.shift_starts_at) : ''} · place: {a.signup_status}</p>}
-        {pendingOffer && <p className="mt-2 text-sm text-amber-900">Offer pending · expires {formatDateTime(a.offer_expires_at!)}</p>}
-        {open && (
-          <div className="mt-4 grid gap-4 border-t border-black/10 pt-4 lg:grid-cols-2">
+        </td>
+        <td className={`${TABLE.td} ${TABLE.hideSm} whitespace-nowrap tabular-nums`}>{Number(a.applicant_verified_hours)} h</td>
+        <td className={`${TABLE.td} ${TABLE.hideSm}`}>
+          {a.applicant_skills.length
+            ? <span className="inline-flex h-6 items-center gap-1 rounded-full bg-emerald-50 px-2.5 text-[12.5px] font-semibold text-emerald-800" title={a.applicant_skills.join(', ')}><Icon name="check" size={14} />{a.applicant_skills.length} skill{a.applicant_skills.length === 1 ? '' : 's'}</span>
+            : <span className="inline-flex h-6 items-center whitespace-nowrap rounded-full bg-neutral-100 px-2.5 text-[12.5px] font-semibold text-ink-700">None listed</span>}
+        </td>
+        <td className={`${TABLE.td} ${TABLE.hideSm} whitespace-nowrap`}>{formatDateTime(a.created_at)}</td>
+        <td className={TABLE.td}>
+          <StatusBadge status={a.offer_status === 'accepted' ? 'accepted' : a.status} />
+          <span className="sr-only">{APPLICATION_STATUS_LABELS[a.status]}</span>
+          {pendingOffer && <p className="mt-1 hidden text-xs text-amber-800 md:block">Offer expires {formatDateTime(a.offer_expires_at!)}</p>}
+          {a.offer_status === 'accepted' && <p className="mt-1 hidden text-xs text-emerald-800 md:block">Shift {a.shift_starts_at ? formatDateTime(a.shift_starts_at) : ''} · place: {a.signup_status}</p>}
+        </td>
+        <td className={`${TABLE.td} ${TABLE.fullSm} text-right max-md:text-left`}>
+          <Button size="sm" variant="secondary" aria-expanded={open} aria-controls={detailsId} onClick={() => setOpen(!open)}>{open ? 'Hide details' : 'Review'}</Button>
+        </td>
+      </tr>
+      {open && (
+        <tr id={detailsId} className="border-t border-neutral-100 bg-[#fbfcfa] max-md:block">
+          <td colSpan={6} className="px-4 py-4 max-md:block">
+          <div className="grid gap-4 lg:grid-cols-2">
             <dl className="flex flex-col gap-2 text-sm">
               {a.message && <div><dt className="font-medium">Application message</dt><dd className="whitespace-pre-line text-ink-700">{a.message}</dd></div>}
               {a.applicant_bio && <div><dt className="font-medium">About</dt><dd className="text-ink-700">{a.applicant_bio}</dd></div>}
@@ -138,7 +182,7 @@ function ApplicantCard({ a, onDone, onError }: { a: OrgApplication; onDone: (t: 
                 </div>
               )}
               {!final && !pendingOffer && (
-                <form className="flex flex-col gap-2 rounded-md border border-black/10 p-3" onSubmit={(e) => {
+                <form className="flex flex-col gap-2 rounded-lg border border-neutral-100 bg-white p-3" onSubmit={(e) => {
                   e.preventDefault(); const f = new FormData(e.currentTarget)
                   const shiftId = String(f.get('shift') ?? ''); const message = String(f.get('message') ?? '').trim()
                   if (!shiftId) return onError(new Error('Choose a shift for the offer.'))
@@ -158,9 +202,10 @@ function ApplicantCard({ a, onDone, onError }: { a: OrgApplication; onDone: (t: 
               )}
             </div>
           </div>
-        )}
-      </Card>
-    </li>
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 

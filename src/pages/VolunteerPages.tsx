@@ -10,7 +10,10 @@ import { toAppError } from '../lib/errors'
 import { CAUSE_LABELS, formatDateTime, formatShiftWindow } from '../lib/format'
 import { useNow } from '../lib/useNow'
 import { useDialog } from '../components/dialog'
-import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge, TextArea, TextField } from '../components/ui'
+import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge, Tabs, TextArea, TextField } from '../components/ui'
+import { TABLE } from '../lib/table'
+import { APP_TABS, appTabOf, type AppTab } from '../lib/appTabs'
+import { Icon } from '../components/Icon'
 
 function hoursLeft(iso: string, now: number) {
   const ms = new Date(iso).getTime() - now
@@ -41,40 +44,43 @@ export function MyApplicationsPage() {
 
   const rows = q.data ?? []
   const offers = rows.filter((a) => a.offer_status === 'pending' && a.offer_expires_at && new Date(a.offer_expires_at).getTime() > now)
-  const rest = rows.filter((a) => !offers.includes(a))
+  // Prototype tabs: client-side filter of the rows already loaded.
+  const [tab, setTab] = useState<AppTab>('all')
+  const counts = Object.fromEntries(APP_TABS.map((t) => [t.value, rows.filter((a) => appTabOf(a) === t.value || t.value === 'all').length])) as Record<AppTab, number>
+  const shown = rows.filter((a) => tab === 'all' || appTabOf(a) === tab)
 
   return (
-    <>
+    <div className="flex flex-col gap-6 [&>*:first-child]:mb-0">
       <PageHeader title="Applications & offers" subtitle="Track your applications and respond to offers before they expire (72 hours)." />
-      <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
+      <div aria-live="polite" className="empty:-mt-6">{notice && <Alert tone={notice.tone}>{notice.text}</Alert>}</div>
       {q.isPending && <LoadingState label="Loading applications" />}
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}
 
       {offers.length > 0 && (
-        <section aria-labelledby="offers-h" className="mb-8">
-          <h2 id="offers-h" className="mb-3 text-lg font-semibold">Offers waiting for you</h2>
+        <section aria-labelledby="offers-h">
+          <h2 id="offers-h" className="sr-only">Offers waiting for you</h2>
           <ul className="flex flex-col gap-3">
             {offers.map((a) => (
               <li key={a.offer_id}>
-                <Card className="border-brand-600">
+                <div className="flex flex-col gap-3 rounded-xl border border-sky-300 bg-sky-50 p-5 sm:p-7">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold"><Link className="hover:underline" to={`/opportunities/${a.opportunity_id}`}>{a.opportunity_title}</Link></p>
-                      <p className="text-sm text-ink-500">{a.org_name}</p>
-                      {a.shift_starts_at && a.shift_ends_at && <p className="mt-1 text-sm">Shift: {a.shift_title ?? 'Shift'} · {formatShiftWindow(a.shift_starts_at, a.shift_ends_at)}</p>}
+                    <div className="min-w-0">
+                      <p className="flex items-start gap-2 font-semibold text-ink-900"><Icon name="briefcase" className="mt-0.5 text-sky-800" />
+                        <span>You have been selected: <Link className="hover:underline" to={`/opportunities/${a.opportunity_id}`}>{a.opportunity_title}</Link></span></p>
+                      <p className="mt-1 text-sm text-ink-700">{a.org_name}{a.shift_starts_at && a.shift_ends_at ? ` · ${a.shift_title ?? 'Shift'} · ${formatShiftWindow(a.shift_starts_at, a.shift_ends_at)}` : ''}</p>
                       {a.offer_message && <p className="mt-1 text-sm text-ink-700">“{a.offer_message}”</p>}
                     </div>
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">{hoursLeft(a.offer_expires_at!, now)}</span>
+                    <span className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#fbeee4] px-2.5 text-[12.5px] font-semibold text-terracotta-700"><Icon name="clock" size={14} />{hoursLeft(a.offer_expires_at!, now)}</span>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button busy={accept.isPending && accept.variables === a.offer_id} onClick={() => accept.mutate(a.offer_id!)}>Accept offer</Button>
                     <Button variant="secondary" busy={decline.isPending && decline.variables === a.offer_id} onClick={async () => {
                       if (await dialog.confirm({ title: 'Decline this offer?', message: 'The organization will be told, and this application will close.', confirmLabel: 'Decline', danger: true }))
                         decline.mutate(a.offer_id!)
                     }}>Decline</Button>
                   </div>
-                  <p className="mt-2 text-xs text-ink-500">Accepting books the shift with the same capacity rules as everyone else: confirmed if a seat is free, otherwise a fair waitlist place.</p>
-                </Card>
+                  <p className="text-xs text-ink-700">Accepting books the shift with the same capacity rules as everyone else: confirmed if a seat is free, otherwise a fair waitlist place — never overbooked.</p>
+                </div>
               </li>
             ))}
           </ul>
@@ -82,42 +88,70 @@ export function MyApplicationsPage() {
       )}
 
       {q.data && (
-        <section aria-labelledby="apps-h">
-          <h2 id="apps-h" className="mb-3 text-lg font-semibold">All applications</h2>
-          {rest.length === 0 && offers.length === 0 ? (
+        <section aria-labelledby="apps-h" className="flex flex-col gap-4">
+          <h2 id="apps-h" className="sr-only">All applications</h2>
+          {rows.length === 0 ? (
             <EmptyState title="No applications yet"><Link className="underline" to="/explore">Explore opportunities</Link> that select volunteers by application.</EmptyState>
           ) : (
-            <ul className="flex flex-col gap-3">{rest.map((a) => <ApplicationRow key={a.application_id} a={a} onWithdraw={async () => {
-              if (await dialog.confirm({ title: 'Withdraw this application?', confirmLabel: 'Withdraw', danger: true })) withdraw.mutate(a.application_id)
-            }} busy={withdraw.isPending && withdraw.variables === a.application_id} />)}</ul>
+            <>
+              <Tabs label="Filter applications" controls="apps-panel" value={tab} onChange={setTab} tabs={APP_TABS.map((t) => ({ ...t, count: counts[t.value] }))} />
+              <div id="apps-panel" role="tabpanel" aria-labelledby={`tab-apps-panel-${tab}`}>
+                {shown.length === 0 ? <p className="py-4 text-sm text-ink-500">Nothing in this group.</p> : (
+                  <div className={TABLE.wrap}>
+                    <table className={TABLE.table}>
+                      <caption className="sr-only">Your applications</caption>
+                      <thead className={TABLE.thead}>
+                        <tr>
+                          <th scope="col" className={TABLE.th}>Opportunity</th>
+                          <th scope="col" className={TABLE.th}>Organization</th>
+                          <th scope="col" className={TABLE.th}>Applied</th>
+                          <th scope="col" className={TABLE.th}>Status</th>
+                          <th scope="col" className={TABLE.th}><span className="sr-only">Actions</span></th>
+                        </tr>
+                      </thead>
+                      <tbody className={TABLE.tbody}>
+                        {shown.map((a) => <ApplicationRow key={a.application_id} a={a} onWithdraw={async () => {
+                          if (await dialog.confirm({ title: 'Withdraw this application?', confirmLabel: 'Withdraw', danger: true })) withdraw.mutate(a.application_id)
+                        }} busy={withdraw.isPending && withdraw.variables === a.application_id} />)}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </section>
       )}
-    </>
+    </div>
   )
 }
+
 
 function ApplicationRow({ a, onWithdraw, busy }: { a: MyApplication; onWithdraw: () => void; busy: boolean }) {
   const canWithdraw = ['submitted', 'under_review', 'selected'].includes(a.status) && a.offer_status !== 'accepted'
   return (
-    <li>
-      <Card className="flex flex-wrap items-start justify-between gap-3">
+    <tr className={TABLE.tr}>
+      <td className={TABLE.td}>
         <div className="min-w-0">
-          <p className="font-medium"><Link className="hover:underline" to={`/opportunities/${a.opportunity_id}`}>{a.opportunity_title}</Link></p>
-          <p className="text-sm text-ink-500">{a.org_name} · applied {formatDateTime(a.created_at)}</p>
+          <p className="font-semibold"><Link className="text-ink-900 hover:text-brand-700 hover:underline" to={`/opportunities/${a.opportunity_id}`}>{a.opportunity_title}</Link></p>
+          <p className="text-xs text-ink-500 md:hidden">{a.org_name} · applied {formatDateTime(a.created_at)}</p>
           {a.status === 'rejected' && a.decision_reason && <p className="mt-1 text-sm text-ink-700">Reason: {a.decision_reason}</p>}
           {a.offer_status === 'accepted' && a.shift_starts_at && a.shift_ends_at && (
             <p className="mt-1 text-sm">Offer accepted · {formatShiftWindow(a.shift_starts_at, a.shift_ends_at)} · place: {a.signup_status ?? '—'}</p>
           )}
           {a.offer_status === 'revoked' && a.status !== 'rejected' && <p className="mt-1 text-sm text-ink-700">The organization withdrew an earlier offer; your application is still being considered.</p>}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge status={a.offer_status === 'accepted' ? 'accepted' : a.status} />
-          <span className="sr-only">{APPLICATION_STATUS_LABELS[a.status]}</span>
-          {canWithdraw && <Button variant="secondary" busy={busy} onClick={onWithdraw}>Withdraw</Button>}
-        </div>
-      </Card>
-    </li>
+      </td>
+      <td className={`${TABLE.td} ${TABLE.hideSm}`}>{a.org_name}</td>
+      <td className={`${TABLE.td} ${TABLE.hideSm} whitespace-nowrap`}>{formatDateTime(a.created_at)}</td>
+      <td className={TABLE.td}>
+        <StatusBadge status={a.offer_status === 'accepted' ? 'accepted' : a.status} />
+        <span className="sr-only">{APPLICATION_STATUS_LABELS[a.status]}</span>
+      </td>
+      <td className={`${TABLE.td} ${TABLE.fullSm} text-right max-md:text-left`}>
+        {canWithdraw && <Button size="sm" variant="secondary" busy={busy} onClick={onWithdraw}>Withdraw</Button>}
+      </td>
+    </tr>
   )
 }
 

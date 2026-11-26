@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
@@ -5,7 +6,8 @@ import { getOrgDashboard, getOrgOpportunities, getOrganization } from '../lib/ap
 import { toAppError } from '../lib/errors'
 import { useNow } from '../lib/useNow'
 import { CAUSE_LABELS, MODE_LABELS } from '../lib/format'
-import { Alert, CapacityMeter, Card, EmptyState, ErrorState, LoadingState, PageHeader, Stat, StatusBadge } from '../components/ui'
+import { Alert, CapacityMeter, Card, EmptyState, ErrorState, LoadingState, PageHeader, Stat, StatusBadge, Tabs } from '../components/ui'
+import { TABLE } from '../lib/table'
 import { getOrgApplications, getOrgFeedback } from '../lib/platform'
 import { groupByDay } from '../lib/dashboard'
 import { Icon } from '../components/Icon'
@@ -27,6 +29,8 @@ export function OrgPage() {
   const reviewApps = useQuery({ queryKey: ['org-app-count', orgId, 'under_review'], queryFn: () => getOrgApplications(orgId, undefined, 'under_review') })
   const countOf = (q: typeof newApps) => (q.isError ? null : q.data ? (q.data[0]?.total_count ?? 0) : undefined)
   const newCount = countOf(newApps), reviewCount = countOf(reviewApps)
+  // Prototype D02 tabs; declared before the early returns below (hooks order).
+  const [oppTab, setOppTab] = useState<'all' | 'published' | 'draft' | 'closed'>('all')
 
   if (org.isPending) return <LoadingState />
   if (org.isError) return <ErrorState message={toAppError(org.error).message} onRetry={() => org.refetch()} />
@@ -136,25 +140,54 @@ export function OrgPage() {
         {opps.isPending && <LoadingState />}
         {opps.isError && <ErrorState message={toAppError(opps.error).message} onRetry={() => opps.refetch()} />}
         {opps.data?.length === 0 && <EmptyState title="No opportunities yet">Create the first one to start recruiting volunteers.</EmptyState>}
-        <ul className="flex flex-col gap-2">
-          {[...(opps.data ?? [])].sort((a, b) => Number(a.status === 'closed') - Number(b.status === 'closed')).map((op) => {
-            const upcoming = op.shifts.filter((s) => s.status === 'scheduled' && new Date(s.starts_at).getTime() > now).length
-            return (
-              <li key={op.id}>
-                <Card className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <Link className="font-medium hover:underline" to={`/org/${orgId}/opportunities/${op.id}`}>{op.title}</Link>
-                    <p className="text-sm text-ink-500">{CAUSE_LABELS[op.cause]} · {MODE_LABELS[op.mode]}{op.city ? ` · ${op.city}` : ''} · {upcoming} upcoming shift{upcoming === 1 ? '' : 's'}</p>
+        {opps.data && opps.data.length > 0 && (() => {
+          const all = [...opps.data].sort((x, y) => Number(x.status === 'closed') - Number(y.status === 'closed'))
+          const count = (st: string) => all.filter((o) => o.status === st).length
+          const shown = all.filter((o) => oppTab === 'all' || o.status === oppTab)
+          return (
+            <div className="flex flex-col gap-4">
+              <Tabs label="Filter opportunities" controls="opps-panel" value={oppTab} onChange={setOppTab}
+                tabs={[{ value: 'all', label: 'All', count: all.length }, { value: 'published', label: 'Published', count: count('published') }, { value: 'draft', label: 'Draft', count: count('draft') }, { value: 'closed', label: 'Closed', count: count('closed') }]} />
+              <div id="opps-panel" role="tabpanel" aria-labelledby={`tab-opps-panel-${oppTab}`}>
+                {shown.length === 0 ? <p className="py-4 text-sm text-ink-500">Nothing in this group.</p> : (
+                  <div className={TABLE.wrap}>
+                    <table className={TABLE.table}>
+                      <caption className="sr-only">Opportunities</caption>
+                      <thead className={TABLE.thead}>
+                        <tr>
+                          <th scope="col" className={TABLE.th}>Opportunity</th>
+                          <th scope="col" className={TABLE.th}>Cause · mode</th>
+                          <th scope="col" className={TABLE.th}>Upcoming shifts</th>
+                          <th scope="col" className={TABLE.th}>Status</th>
+                          <th scope="col" className={TABLE.th}><span className="sr-only">Actions</span></th>
+                        </tr>
+                      </thead>
+                      <tbody className={TABLE.tbody}>
+                        {shown.map((op) => {
+                          const upcoming = op.shifts.filter((x) => x.status === 'scheduled' && new Date(x.starts_at).getTime() > now).length
+                          return (
+                            <tr key={op.id} className={TABLE.tr}>
+                              <td className={TABLE.td}>
+                                <Link className="font-semibold text-ink-900 hover:text-brand-700 hover:underline" to={`/org/${orgId}/opportunities/${op.id}`}>{op.title}</Link>
+                                <p className="text-xs text-ink-500">{op.city ?? MODE_LABELS[op.mode]}{op.is_sensitive ? ' · sensitive' : ''}<span className="md:hidden"> · {upcoming} upcoming shift{upcoming === 1 ? '' : 's'}</span></p>
+                              </td>
+                              <td className={`${TABLE.td} ${TABLE.hideSm}`}>{CAUSE_LABELS[op.cause]} · {MODE_LABELS[op.mode]}</td>
+                              <td className={`${TABLE.td} ${TABLE.hideSm} tabular-nums`}>{upcoming}</td>
+                              <td className={TABLE.td}><StatusBadge status={op.status} /></td>
+                              <td className={`${TABLE.td} ${TABLE.hideSm} text-right`}>
+                                <Link to={`/org/${orgId}/opportunities/${op.id}`} className="inline-flex min-h-9 items-center rounded-lg border border-[#d5d9d2] bg-white px-3 text-sm font-semibold text-ink-900 hover:border-brand-600 hover:text-brand-700">Manage</Link>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {op.is_sensitive && <span className="text-xs text-amber-800">sensitive</span>}
-                    <StatusBadge status={op.status} />
-                  </div>
-                </Card>
-              </li>
-            )
-          })}
-        </ul>
+                )}
+              </div>
+            </div>
+          )
+        })()}
       </section>
       <section aria-labelledby="fb-h">
         <h2 id="fb-h" className="mb-3 text-xl font-semibold">Volunteer feedback</h2>
