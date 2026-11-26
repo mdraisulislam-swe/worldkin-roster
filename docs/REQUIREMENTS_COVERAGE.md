@@ -36,7 +36,7 @@ IMPLEMENTED ≠ TESTED ≠ VERIFIED ≠ DEPLOYED.
 | 3 | Volunteer profile management | `ProfilePage` (education, skills, interests, languages, availability, experience, about, photo, private phone) | `profiles` (+6 columns), `profile_private`, `avatars` bucket | Local DB P5–P6; Unit (validation) | IMPLEMENTED BUT NOT VERIFIED |
 | 4 | Organization profile management | `OrgSettingsPage` (public details, logo, private verification data, documents) | `organizations` (+5 columns), `organization_private`, `org-docs` bucket | Local DB PRIV1–PRIV3 | IMPLEMENTED BUT NOT VERIFIED (storage untestable locally) |
 | 5 | Opportunity CRUD | `OpportunityEditorPage` (+ type, compensation, selection mode, deadline), close/publish | `opportunities`, guard triggers, CHECKs | Live: create/publish/close via API (A05 fixtures); Local DB OPP1–OPP4, AP9, M3 | COMPLETE AND VERIFIED (base) · new fields IMPLEMENTED BUT NOT VERIFIED live |
-| 6 | Application submission and hiring decisions | `ApplyPanel`, `MyApplicationsPage`, `OrgApplicationsPage` | `applications`, `application_notes`, `offers`; RPCs apply/withdraw/review/send/revoke/accept/decline | Local DB AP1–AP9, R1–R2, O1–O10, E1–E3, X1–X7 | IMPLEMENTED BUT NOT VERIFIED (live script ready) |
+| 6 | Application submission and hiring decisions | `ApplyPanel`, `MyApplicationsPage`, `OrgApplicationsPage` | `applications`, `application_notes`, `offers`; RPCs apply/withdraw/review/send/revoke/accept/decline | Local DB AP1–AP9, R1–R2, O1–O10, E1–E3, X1–X7 | COMPLETE AND VERIFIED (live `docs/evidence/live_wk06/` apps runs 1–3: L2–L10, S1–S4) |
 | 7 | Shift and Signup management | `ShiftManagePage`, `OpportunityPage`, `MyShiftsPage` | `shifts`, `signups`, `join_shift`/`_join_shift_core`, `cancel_signup`, capacity RPCs | Live: A05 C1–C4 ×6 runs, browser journeys | COMPLETE AND VERIFIED |
 | 8 | Complete user-facing workflows | Volunteer, organization, admin dashboards with section navigation | all of the above | Browser journeys (pre-wk06, §8); new flows not yet live | PARTIALLY IMPLEMENTED (admin journey + new flows not verified live) |
 | **M02** | | | | | |
@@ -53,7 +53,7 @@ IMPLEMENTED ≠ TESTED ≠ VERIFIED ≠ DEPLOYED.
 | 17 | Organization verification | pending → verified/rejected/suspended; docs + private details for review; unverified cannot publish | `review_organization`, guard trigger, `organization_private` | Live: L15, seed states; Local DB ORG4 | COMPLETE AND VERIFIED (workflow) · document review IMPLEMENTED BUT NOT VERIFIED |
 | 18 | Paid, Stipend-based and Voluntary opportunities | type + mandatory compensation details shown before applying; filter | `compensation_type`, CHECK | Local DB OPP1, OPP3, ST3; Unit | IMPLEMENTED BUT NOT VERIFIED |
 | 19 | Application lifecycle and hiring workflow | submitted → under_review → selected (72 h offer) → accepted/declined/expired; rejected; withdrawn; revoked | applications/offers RPCs, server-side expiry | Local DB AP*, O*, E*, X* (all pass) | IMPLEMENTED BUT NOT VERIFIED |
-| 20 | Shift capacity and waitlist logic | row locks, FIFO, promotion; offer acceptance uses the same core | `_join_shift_core` | Live A05 ×6; Local DB W1–W2 | COMPLETE AND VERIFIED (join path) · offer path IMPLEMENTED BUT NOT VERIFIED live |
+| 20 | Shift capacity and waitlist logic | row locks, FIFO, promotion; offer acceptance uses the same core | `_join_shift_core` | Live A05 ×6; Local DB W1–W2 | COMPLETE AND VERIFIED (join path A05 ×6; offer path apps C1–C2 ×3) |
 | **M05** | | | | | |
 | 21 | Database-driven homepage statistics | Home stats row | `platform_stats()` | Local DB ST1 | IMPLEMENTED BUT NOT VERIFIED |
 | 22 | Dynamic opportunity listings | Home (recent, closing soon), Explore, org profile | `search_opportunities` | Live (pre-wk06 version); Local DB ST3–ST4 | IMPLEMENTED BUT NOT VERIFIED (new version) |
@@ -61,7 +61,7 @@ IMPLEMENTED ≠ TESTED ≠ VERIFIED ≠ DEPLOYED.
 | 24 | Dynamic dashboards | volunteer impact, org dashboard, admin overview | `my_impact`, `org_dashboard`, `admin_overview` | Live: browser journeys (impact/org); Local DB ST6 | COMPLETE AND VERIFIED (volunteer/org) · admin IMPLEMENTED BUT NOT VERIFIED |
 | **M06** | | | | | |
 | 25 | Form validation | zod schemas mirror DB CHECKs; field-level messages | CHECKs | Unit 33/33 | COMPLETE AND VERIFIED (unit) |
-| 26 | Duplicate prevention | idempotent joins/applications/acceptance, one active application, one pending offer, one feedback | unique indexes | Live C2; Local DB AP3–AP4, O8, F4 | COMPLETE AND VERIFIED (joins) · new IMPLEMENTED BUT NOT VERIFIED live |
+| 26 | Duplicate prevention | idempotent joins/applications/acceptance, one active application, one pending offer, one feedback | unique indexes | Live C2; Local DB AP3–AP4, O8, F4 | COMPLETE AND VERIFIED (joins; applications L3: 5 parallel → 1 row) |
 | 27 | Authorization error handling | WK_* codes → plain messages; "No access" screens | | Unit; Browser §8 | COMPLETE AND VERIFIED |
 | 28 | Database and network error handling | `toAppError`, retry buttons, network/rate-limit messages | | Unit; Browser (graceful "—" when RPC missing) | COMPLETE AND VERIFIED |
 | 29 | Loading, empty, success, failure states | skeletons, EmptyState, aria-live notices, dialogs | | Browser §8, §10, this branch at 375 px | COMPLETE AND VERIFIED |
@@ -75,17 +75,17 @@ IMPLEMENTED ≠ TESTED ≠ VERIFIED ≠ DEPLOYED.
 | 35 | Setup and architecture documentation | README, BLUEPRINT, DATABASE_DESIGN, DESIGN_DECISIONS | | docs | IMPLEMENTED BUT NOT VERIFIED (final review pending) |
 | 36 | Testing documentation | `docs/TESTING.md`, `docs/evidence/` | | docs | COMPLETE AND VERIFIED (for executed tests) |
 | **A03** | | | | | |
-| 37 | Correct RLS policies | RLS on all 17 tables; deny-by-default grants | wk03, wk06 | Live L1–L18; Local DB P*, D*, N*, C* | COMPLETE AND VERIFIED (9 tables) · 8 new IMPLEMENTED BUT NOT VERIFIED live |
-| 38 | Organization-level data isolation | `is_org_member` on applications/offers/notes/private | | Live L11, L18; Local DB P1–P2, PRIV1 | COMPLETE AND VERIFIED (existing) · new IMPLEMENTED BUT NOT VERIFIED live |
-| 39 | Volunteer privacy | phone in owner-only table; applicant RPC without contact data; public feedback first name only | `profile_private`, `org_applications`, `org_feedback` | Local DB P5–P7, F5 | IMPLEMENTED BUT NOT VERIFIED live |
+| 37 | Correct RLS policies | RLS on all 17 tables; deny-by-default grants | wk03, wk06 | Live L1–L18; Local DB P*, D*, N*, C* | COMPLETE AND VERIFIED (all 17 tables have RLS, read-only check 26 Nov; live `docs/evidence/live_wk06/` security L1–L18, apps L4–L7/S2/S4) |
+| 38 | Organization-level data isolation | `is_org_member` on applications/offers/notes/private | | Live L11, L18; Local DB P1–P2, PRIV1 | COMPLETE AND VERIFIED (security L11, L15, L18; apps L5) |
+| 39 | Volunteer privacy | phone in owner-only table; applicant RPC without contact data; public feedback first name only | `profile_private`, `org_applications`, `org_feedback` | Local DB P5–P7, F5 | COMPLETE AND VERIFIED (apps L6–L7: no contact fields for coordinators; S4 private notes) |
 | 40 | Secure RPC authorization | SECURITY DEFINER, `search_path=''`, explicit EXECUTE grants, internal functions not callable | | Live L7, L10c; Local DB D5–D6 | COMPLETE AND VERIFIED (existing) · new IMPLEMENTED BUT NOT VERIFIED live |
 | 41 | Platform Admin privilege protection | no public admin sign-up; role not writable; admins cannot suspend admins/self | | Live L4, L10; Local DB S1–S2, S6, S9 | COMPLETE AND VERIFIED (existing) · L19 BLOCKED (Founder sign-in) |
 | **A05** | | | | | |
 | 42 | Atomic shift booking | single transaction per booking | | Live C1–C4 ×6 | COMPLETE AND VERIFIED |
 | 43 | Capacity locking and FIFO waitlist | shift `FOR UPDATE`, `queue_seq` | | Live C1, C4 | COMPLETE AND VERIFIED |
-| 44 | Idempotent operations | idempotency keys (join, accept), replayed responses | | Live C2; Local DB O8 | COMPLETE AND VERIFIED (join) · accept IMPLEMENTED BUT NOT VERIFIED live |
-| 45 | Concurrent booking safety | volunteer lock (wk05), exclusion constraint, lock order volunteer → application → offer → shift → signup, SKIP LOCKED expiry | | Live C3 (deadlock fixed, runs 4–6) | COMPLETE AND VERIFIED (join) · concurrent offer acceptance: live script `live_applications_check.mjs` C1–C3 ready, BLOCKED until wk06 applied |
-| 46 | Comprehensive concurrency testing | `concurrency_check.mjs`, `live_applications_check.mjs` | | 6 live runs | PARTIALLY IMPLEMENTED (offer concurrency pending live run) |
+| 44 | Idempotent operations | idempotency keys (join, accept), replayed responses | | Live C2; Local DB O8 | COMPLETE AND VERIFIED (join A05; accept apps C3: triple parallel accept → one signup) |
+| 45 | Concurrent booking safety | volunteer lock (wk05), exclusion constraint, lock order volunteer → application → offer → shift → signup, SKIP LOCKED expiry | | Live C3 (deadlock fixed, runs 4–6) | COMPLETE AND VERIFIED (join A05 ×6; concurrent offer acceptance apps C1–C3 ×3) |
+| 46 | Comprehensive concurrency testing | `concurrency_check.mjs`, `live_applications_check.mjs` | | 6 live runs | COMPLETE AND VERIFIED (A05 runs 1–3, C1–C4 ×6, apps C1–C3 ×3) |
 | **Product** | | | | | |
 | 47 | End-to-end integration (public pages, auth, registration, dashboards, opportunities, applications, offers, signups, attendance, complaints, feedback, database, notifications) | all modules wired in router and navigation | wk01–wk07 | Local DB + Unit + Browser (pre-wk06) | IMPLEMENTED BUT NOT VERIFIED — BLOCKED on applying wk06/wk07 |
 
