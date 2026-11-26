@@ -10,9 +10,22 @@ import { downloadIcs } from '../lib/calendar'
 import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Stat, StatusBadge } from '../components/ui'
 import { useDialog } from '../components/dialog'
 import { VolunteerNav } from '../components/DashboardNav'
+import { getMyApplications } from '../lib/platform'
+import { firstName, profileCompletion, summarizeApplications } from '../lib/dashboard'
+
+function NextStep({ text, to, cta, tone }: { text: string; to: string; cta: string; tone?: 'action' }) {
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+      <span className={tone === 'action' ? 'text-sm font-medium text-ink-900' : 'text-sm text-ink-700'}>{text}</span>
+      <Link to={to} className={tone === 'action'
+        ? 'shrink-0 rounded-md bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800'
+        : 'shrink-0 rounded-md border border-black/15 bg-white px-3 py-1.5 text-sm font-medium hover:bg-black/5'}>{cta}</Link>
+    </li>
+  )
+}
 
 export function MyShiftsPage() {
-  const { session, refresh } = useAuth()
+  const { session, profile, refresh } = useAuth()
   const uid = session!.user.id
   const qc = useQueryClient()
   const dialog = useDialog()
@@ -21,6 +34,8 @@ export function MyShiftsPage() {
   const signups = useQuery({ queryKey: ['my-signups', uid], queryFn: () => getMySignups(uid) })
   const impact = useQuery({ queryKey: ['my-impact', uid], queryFn: getMyImpact })
   const invites = useQuery({ queryKey: ['my-invites', uid], queryFn: getMyInvites })
+  // Same query key as the Applications page, so the data is shared, not fetched twice.
+  const apps = useQuery({ queryKey: ['my-applications'], queryFn: getMyApplications })
 
   const cancel = useMutation({
     mutationFn: (id: string) => cancelSignup(id),
@@ -37,13 +52,53 @@ export function MyShiftsPage() {
   const rows = signups.data ?? []
   const upcoming = rows.filter((s) => s.shifts && new Date(s.shifts.ends_at).getTime() > now && s.status !== 'cancelled')
   const past = rows.filter((s) => !upcoming.includes(s))
+  const name = firstName(profile?.full_name)
+  const completion = profileCompletion(profile as Parameters<typeof profileCompletion>[0])
+  const appSummary = apps.data ? summarizeApplications(apps.data, now) : null
 
   return (
     <>
-      <PageHeader title="Volunteer dashboard" subtitle="Your places, waitlists, attendance and verified volunteer hours."
+      <PageHeader title={name ? `Welcome back, ${name}` : 'Volunteer dashboard'} subtitle="Your applications, offers, shifts and verified volunteer hours in one place."
         actions={<Link to="/explore" className="rounded-md bg-brand-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-800">Find opportunities</Link>} />
       <VolunteerNav />
       <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
+
+      <section className="mb-8 grid gap-4 lg:grid-cols-3" aria-labelledby="next-h">
+        <Card className="lg:col-span-2">
+          <h2 id="next-h" className="text-lg font-semibold">Next steps</h2>
+          <ul className="mt-3 flex flex-col divide-y divide-black/5">
+            {appSummary && appSummary.offers > 0 && (
+              <NextStep tone="action" text={`You have ${appSummary.offers} offer${appSummary.offers === 1 ? '' : 's'} waiting for your answer. Offers expire after 72 hours.`} to="/me/applications" cta="Respond to offers" />
+            )}
+            {completion.missing.length > 0 && (
+              <NextStep text={`Complete your profile (${completion.done}/${completion.total}): add ${completion.missing.slice(0, 3).join(', ').toLowerCase()}${completion.missing.length > 3 ? '…' : ''}. Organizations see it when you apply.`} to="/me/profile" cta="Edit profile" />
+            )}
+            {signups.data && upcoming.length === 0 && (
+              <NextStep text="You have no upcoming shifts. Browse open opportunities and join or apply." to="/explore" cta="Explore" />
+            )}
+            {appSummary && appSummary.inProgress > 0 && (
+              <NextStep text={`${appSummary.inProgress} application${appSummary.inProgress === 1 ? ' is' : 's are'} being reviewed by organizations.`} to="/me/applications" cta="View" />
+            )}
+            {appSummary && appSummary.offers === 0 && completion.missing.length === 0 && upcoming.length > 0 && appSummary.inProgress === 0 && (
+              <li className="py-2 text-sm text-ink-700">You are all set. See your upcoming shifts below.</li>
+            )}
+          </ul>
+        </Card>
+        <Card>
+          <h2 className="text-lg font-semibold">Applications</h2>
+          {apps.isError ? <p className="mt-3 text-sm text-ink-500">Applications could not be loaded.</p> : (
+            <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+              {([['In review', appSummary?.inProgress], ['Offers to answer', appSummary?.offers], ['Accepted', appSummary?.accepted], ['Closed', appSummary?.closed]] as const).map(([label, v]) => (
+                <div key={label}>
+                  <dt className="text-xs uppercase tracking-wide text-ink-500">{label}</dt>
+                  <dd className="text-xl font-semibold text-ink-900">{v ?? '…'}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          <Link className="mt-3 inline-block text-sm text-brand-700 underline" to="/me/applications">All applications &amp; offers</Link>
+        </Card>
+      </section>
 
       {invites.data && invites.data.length > 0 && (
         <section className="mb-8" aria-labelledby="inv-h">

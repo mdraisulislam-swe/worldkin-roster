@@ -5,10 +5,10 @@ import { getOrgDashboard, getOrgOpportunities, getOrganization } from '../lib/ap
 import { toAppError } from '../lib/errors'
 import { useNow } from '../lib/useNow'
 import { CAUSE_LABELS, MODE_LABELS } from '../lib/format'
-import { Alert, Card, EmptyState, ErrorState, LoadingState, PageHeader, Stat, StatusBadge } from '../components/ui'
+import { Alert, CapacityMeter, Card, EmptyState, ErrorState, LoadingState, PageHeader, Stat, StatusBadge } from '../components/ui'
 import { DashboardNav } from '../components/DashboardNav'
 import { orgNav } from '../lib/nav'
-import { getOrgFeedback } from '../lib/platform'
+import { getOrgApplications, getOrgFeedback } from '../lib/platform'
 
 /** Organization dashboard (M05 aggregates) + opportunity list for staff. */
 export function OrgPage() {
@@ -20,6 +20,11 @@ export function OrgPage() {
   const dash = useQuery({ queryKey: ['org-dashboard', orgId], queryFn: () => getOrgDashboard(orgId) })
   const opps = useQuery({ queryKey: ['org-opps', orgId], queryFn: () => getOrgOpportunities(orgId) })
   const feedback = useQuery({ queryKey: ['org-feedback', orgId], queryFn: () => getOrgFeedback(orgId, 5) })
+  // Server-side counts (total_count) from the existing, RLS-protected applicant RPC; no new query or data.
+  const newApps = useQuery({ queryKey: ['org-app-count', orgId, 'submitted'], queryFn: () => getOrgApplications(orgId, undefined, 'submitted') })
+  const reviewApps = useQuery({ queryKey: ['org-app-count', orgId, 'under_review'], queryFn: () => getOrgApplications(orgId, undefined, 'under_review') })
+  const countOf = (q: typeof newApps) => (q.isError ? null : q.data ? (q.data[0]?.total_count ?? 0) : undefined)
+  const newCount = countOf(newApps), reviewCount = countOf(reviewApps)
 
   if (org.isPending) return <LoadingState />
   if (org.isError) return <ErrorState message={toAppError(org.error).message} onRetry={() => org.refetch()} />
@@ -47,16 +52,33 @@ export function OrgPage() {
       <section aria-labelledby="dash-h" className="mb-8">
         <h2 id="dash-h" className="mb-3 text-lg font-semibold">Overview</h2>
         {dash.isError && <ErrorState message={toAppError(dash.error).message} onRetry={() => dash.refetch()} />}
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="flex flex-col gap-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-500">Applicants to review</h3>
+            <dl className="grid grid-cols-2 gap-3">
+              <div><dt className="text-xs text-ink-500">New</dt><dd className="text-2xl font-semibold text-ink-900">{newCount === undefined ? '…' : newCount ?? '—'}</dd></div>
+              <div><dt className="text-xs text-ink-500">Under review</dt><dd className="text-2xl font-semibold text-ink-900">{reviewCount === undefined ? '…' : reviewCount ?? '—'}</dd></div>
+            </dl>
+            <Link to={`/org/${orgId}/applications`} className="mt-auto self-start rounded-md bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800">Review applicants</Link>
+          </Card>
+          {dash.data && (
+            <Card className="flex flex-col gap-3 lg:col-span-2">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-500">Upcoming shifts</h3>
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <p className="text-ink-700"><span className="text-2xl font-semibold text-ink-900">{dash.data.upcoming_shifts}</span> scheduled · {dash.data.upcoming_waitlisted} on waitlists</p>
+                <div className="w-full sm:w-64"><CapacityMeter confirmed={dash.data.upcoming_confirmed} capacity={dash.data.upcoming_capacity} /></div>
+              </div>
+              <p className="text-xs text-ink-500">Seats filled across all upcoming shifts. Waitlisted volunteers are promoted automatically, first come first served.</p>
+            </Card>
+          )}
+        </div>
         {dash.data && (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat label="Upcoming shifts" value={dash.data.upcoming_shifts} />
-            <Stat label="Fill rate" value={`${Number(dash.data.fill_rate_pct)}%`} />
-            <Stat label="Verified hours" value={Number(dash.data.verified_hours)} />
-            <Stat label="No-show rate" value={`${Number(dash.data.no_show_rate_pct)}%`} />
-            <Stat label="Confirmed (upcoming)" value={`${dash.data.upcoming_confirmed}/${dash.data.upcoming_capacity}`} />
-            <Stat label="Waitlisted" value={dash.data.upcoming_waitlisted} />
-            <Stat label="Unique volunteers" value={dash.data.unique_volunteers} />
+          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
             <Stat label="Opportunities" value={`${dash.data.opportunities.published} live · ${dash.data.opportunities.draft} draft`} />
+            <Stat label="Verified hours" value={Number(dash.data.verified_hours)} />
+            <Stat label="Unique volunteers" value={dash.data.unique_volunteers} />
+            <Stat label="Fill rate" value={`${Number(dash.data.fill_rate_pct)}%`} />
+            <Stat label="No-show rate" value={`${Number(dash.data.no_show_rate_pct)}%`} />
           </div>
         )}
       </section>

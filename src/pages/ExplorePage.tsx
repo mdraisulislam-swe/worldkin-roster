@@ -72,7 +72,7 @@ export function ExplorePage() {
         </form>
       </Card>
 
-      <nav aria-label="Quick cause filter" className="-mt-2 mb-5 flex flex-wrap gap-2">
+      <nav aria-label="Quick cause filter" className="-mt-2 mb-5 hidden flex-wrap gap-2 sm:flex">
         {(['', ...Constants.public.Enums.cause_category] as const).map((c) => {
           const active = (search.cause ?? '') === c
           return (

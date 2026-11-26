@@ -16,20 +16,20 @@ export function HomePage() {
   const orgs = useQuery({ queryKey: ['home', 'orgs'], queryFn: () => listOrganizations({ pageSize: 6 }) })
 
   return (
-    <div className="flex flex-col gap-14 py-6 sm:py-10">
-      <section aria-labelledby="hero-h">
-        <p className="text-sm font-medium uppercase tracking-wide text-brand-700">Global volunteer &amp; opportunity platform</p>
-        <h1 id="hero-h" className="mt-3 max-w-3xl text-4xl font-semibold leading-tight text-ink-900 sm:text-5xl">Everyone is kin.</h1>
-        <p className="mt-5 max-w-2xl text-lg text-ink-700">
+    <div className="flex flex-col gap-16 py-4 sm:gap-20 sm:py-10">
+      <section aria-labelledby="hero-h" className="border-b border-black/5 pb-14 sm:pb-16">
+        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-700">Global volunteer &amp; opportunity platform</p>
+        <h1 id="hero-h" className="mt-4 max-w-3xl text-5xl font-semibold leading-[1.05] tracking-tight text-ink-900 sm:text-6xl">Everyone is kin.</h1>
+        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink-700 sm:text-xl">
           Worldkin Roster connects volunteers with verified organizations — voluntary, stipend-based and paid roles,
           fair selection, capacity-safe shifts and participation records that cannot be faked.
         </p>
-        <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-2">
-          <Link to={session ? '/explore' : '/signup?as=volunteer'} className="rounded-lg bg-brand-700 p-4 text-white hover:bg-brand-800">
+        <div className="mt-10 grid max-w-3xl gap-4 sm:grid-cols-2">
+          <Link to={session ? '/explore' : '/signup?as=volunteer'} className="rounded-lg bg-brand-700 p-5 text-white shadow-sm transition-colors hover:bg-brand-800">
             <span className="block font-semibold">{session ? 'Find an opportunity' : 'Join as a volunteer'}</span>
             <span className="text-sm text-white/85">Build a profile, apply, get selected, log verified hours.</span>
           </Link>
-          <Link to={session ? '/orgs/new' : '/signup?as=organization'} className="rounded-lg border border-black/15 bg-white p-4 hover:border-brand-600">
+          <Link to={session ? '/orgs/new' : '/signup?as=organization'} className="rounded-lg border border-black/15 bg-white p-5 shadow-sm transition-colors hover:border-brand-600">
             <span className="block font-semibold text-ink-900">Register your organization</span>
             <span className="text-sm text-ink-500">Get verified, publish opportunities, select volunteers.</span>
           </Link>
@@ -47,9 +47,9 @@ export function HomePage() {
             ['Countries', stats.data?.countries],
             ['Cities', stats.data?.cities],
           ] as const).map(([label, value]) => (
-            <div key={label} className="rounded-lg border border-black/10 bg-white p-3">
+            <div key={label} className="rounded-lg border border-black/10 bg-white px-4 py-3.5 shadow-sm">
               <dt className="text-xs uppercase tracking-wide text-ink-500">{label}</dt>
-              <dd className="mt-1 text-2xl font-semibold text-ink-900">{stats.isPending ? '…' : stats.isError ? '—' : Number(value ?? 0).toLocaleString()}</dd>
+              <dd className="mt-1 text-3xl font-semibold tabular-nums text-ink-900">{stats.isPending ? '…' : stats.isError ? '—' : Number(value ?? 0).toLocaleString()}</dd>
             </div>
           ))}
         </dl>
@@ -61,7 +61,7 @@ export function HomePage() {
 
       <section aria-labelledby="orgs-h">
         <div className="mb-4 flex items-end justify-between gap-3">
-          <h2 id="orgs-h" className="text-xl font-semibold">Verified organizations</h2>
+          <h2 id="orgs-h" className="text-2xl font-semibold tracking-tight">Verified organizations</h2>
           <Link to="/organizations" className="text-sm text-brand-700 underline">All organizations</Link>
         </div>
         {orgs.isPending ? <CardSkeletons /> : orgs.isError ? <EmptyState title="Organizations could not be loaded" /> : orgs.data.rows.length === 0 ? (
@@ -72,7 +72,7 @@ export function HomePage() {
       </section>
 
       <section aria-labelledby="browse-h">
-        <h2 id="browse-h" className="text-xl font-semibold">Browse by cause</h2>
+        <h2 id="browse-h" className="text-2xl font-semibold tracking-tight">Browse by cause</h2>
         <ul className="mt-4 flex flex-wrap gap-2">
           {FEATURED_CAUSES.map((c) => (
             <li key={c}>
@@ -83,9 +83,9 @@ export function HomePage() {
         </ul>
       </section>
 
-      <section aria-labelledby="how-h" className="grid gap-8 lg:grid-cols-2">
+      <section aria-labelledby="how-h" className="grid gap-8 rounded-xl border border-black/10 bg-white p-6 shadow-sm sm:p-8 lg:grid-cols-2">
         <div>
-          <h2 id="how-h" className="text-xl font-semibold">How it works for volunteers</h2>
+          <h2 id="how-h" className="text-2xl font-semibold tracking-tight">How it works for volunteers</h2>
           <ol className="mt-4 flex flex-col gap-3">
             {VOLUNTEER_STEPS.map((s, i) => (
               <li key={s.title} className="flex gap-3">
@@ -95,8 +95,8 @@ export function HomePage() {
             ))}
           </ol>
         </div>
-        <div className="rounded-lg border border-black/10 bg-white p-5">
-          <h2 className="text-xl font-semibold">For organizations</h2>
+        <div className="rounded-lg bg-brand-50 p-6">
+          <h2 className="text-2xl font-semibold tracking-tight">For organizations</h2>
           <p className="mt-2 text-ink-700">
             Register and upload verification documents. Once verified, publish voluntary, stipend-based or paid opportunities,
             review applicants, send time-limited offers, manage shifts and confirm attendance.
@@ -117,7 +117,7 @@ function Listing({ id, title, more, q, now, empty }: {
   return (
     <section aria-labelledby={`${id}-h`}>
       <div className="mb-4 flex items-end justify-between gap-3">
-        <h2 id={`${id}-h`} className="text-xl font-semibold">{title}</h2>
+        <h2 id={`${id}-h`} className="text-2xl font-semibold tracking-tight">{title}</h2>
         <Link to={more} className="text-sm text-brand-700 underline">See all</Link>
       </div>
       {q.isPending ? <CardSkeletons /> : q.isError || !q.data ? <EmptyState title="Opportunities could not be loaded" /> : q.data.rows.length === 0 ? (
