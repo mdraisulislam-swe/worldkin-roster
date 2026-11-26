@@ -1,5 +1,5 @@
 /* Reusable, accessible UI primitives (functional first; visual polish via Figma later). */
-import { useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import type { Enums } from '../lib/database.types'
 import { SIGNUP_STATUS_LABELS } from '../lib/format'
 
@@ -52,6 +52,24 @@ export function TextField({ label, error, hint, ...rest }: InputHTMLAttributes<H
     </FieldShell>
   )
 }
+/** Password input with a show/hide toggle (keeps the same label, hint and error behaviour). */
+export function PasswordField({ label, error, hint, ...rest }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & { label: string; error?: string; hint?: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <FieldShell label={label} error={error} hint={hint}>
+      {({ id, describedBy }) => (
+        <div className="relative">
+          <input id={id} type={show ? 'text' : 'password'} aria-invalid={!!error || undefined} aria-describedby={describedBy} className={inputCls(error) + ' pr-16'} {...rest} />
+          <button type="button" onClick={() => setShow((v) => !v)} aria-controls={id} aria-pressed={show}
+            className="absolute inset-y-0 right-0 px-3 text-xs font-medium text-brand-700 hover:underline">
+            {show ? 'Hide' : 'Show'}<span className="sr-only"> password</span>
+          </button>
+        </div>
+      )}
+    </FieldShell>
+  )
+}
+
 export function TextArea({ label, error, hint, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; error?: string; hint?: string }) {
   return (
     <FieldShell label={label} error={error} hint={hint}>

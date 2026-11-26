@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Alert, Button, Card, LoadingState, TextField } from '../components/ui'
+import { Alert, Button, Card, LoadingState, PasswordField, TextField } from '../components/ui'
+import { OTP_LENGTH, clearPendingSignup, cooldownLeft, isCompleteOtp, maskEmail, normalizeOtp, readPendingSignup, savePendingSignup } from '../lib/otp'
+import { useNow } from '../lib/useNow'
 import { toAppError } from '../lib/errors'
 import { authRedirectMessage, hasAuthFragment, readAuthRedirectError, safeNext, type AuthRedirectError } from '../lib/authRedirect'
 import { fieldErrors, signInSchema, signUpSchema } from '../lib/validation'
@@ -79,10 +81,18 @@ export function SignInPage() {
         <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
           {formError && <Alert tone="error">{formError.message}</Alert>}
           <TextField label="Email" name="email" type="email" autoComplete="email" error={errors.email} />
-          <TextField label="Password" name="password" type="password" autoComplete="current-password" error={errors.password} />
+          <PasswordField label="Password" name="password" autoComplete="current-password" error={errors.password} />
           <Button type="submit" busy={busy}>Sign in</Button>
         </form>
-        {formError?.unconfirmed && <div className="mt-4 border-t border-black/10 pt-4"><ResendConfirmation defaultEmail={formError.email} /></div>}
+        {formError?.unconfirmed && (
+          <div className="mt-4 flex flex-col gap-3 border-t border-black/10 pt-4">
+            <Button variant="secondary" onClick={() => {
+              savePendingSignup({ email: formError.email, next, sentAt: 0 })
+              navigate('/verify-email', { state: { email: formError.email, next } })
+            }}>Enter verification code</Button>
+            <ResendConfirmation defaultEmail={formError.email} />
+          </div>
+        )}
       </Card>
       <p className="mt-4 flex flex-wrap justify-between gap-2 text-sm text-ink-500">
         <span>New here? <Link className="text-brand-700 underline" to="/join">Create an account</Link></span>
@@ -97,8 +107,8 @@ export function SignUpPage() {
   const [params] = useSearchParams()
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
-  const [sentTo, setSentTo] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const navigate = useNavigate()
   const asOrg = params.get('as') === 'organization'
   const next = safeNext(params.get('next'), asOrg ? '/orgs/new' : '/me/profile')
   if (session) return <Navigate to={next} replace />
@@ -109,8 +119,13 @@ export function SignUpPage() {
     if (!parsed.success) return setErrors(fieldErrors(parsed.error))
     setErrors({}); setFormError(null); setBusy(true)
     try {
-      const { needsConfirmation } = await signUp(parsed.data.email, parsed.data.password, parsed.data.fullName, next)
-      if (needsConfirmation) setSentTo(parsed.data.email)
+      const { needsConfirmation } = await signUp(parsed.data.email, parsed.data.password, parsed.data.fullName, next, asOrg ? 'organization' : 'volunteer')
+      if (needsConfirmation) {
+        // Email stays in this tab's memory/sessionStorage, never in the URL.
+        const pending = { email: parsed.data.email, name: parsed.data.fullName, next, sentAt: Date.now() }
+        savePendingSignup(pending)
+        navigate('/verify-email', { state: pending })
+      }
     } catch (err) {
       setFormError(toAppError(err).message)
     } finally {
@@ -118,20 +133,6 @@ export function SignUpPage() {
     }
   }
 
-  if (sentTo) {
-    return (
-      <div className="mx-auto flex max-w-md flex-col gap-4">
-        <h1 className="text-2xl font-semibold">Check your inbox</h1>
-        <Alert tone="success">
-          We sent a confirmation link to <strong>{sentTo}</strong>. Open it on this or any device to activate your account.
-        </Alert>
-        <p className="text-sm text-ink-700">
-          Already have an account with this email? No new email is sent in that case — <Link className="text-brand-700 underline" to="/signin">sign in</Link> instead.
-        </p>
-        <Card><ResendConfirmation defaultEmail={sentTo} /></Card>
-      </div>
-    )
-  }
   return (
     <div className="mx-auto max-w-md">
       <h1 className="mb-2 text-2xl font-semibold">{asOrg ? 'Register your organization' : 'Create your volunteer account'}</h1>
@@ -144,8 +145,9 @@ export function SignUpPage() {
           {formError && <Alert tone="error">{formError}</Alert>}
           <TextField label={asOrg ? 'Your full name (representative)' : 'Full name'} name="fullName" autoComplete="name" error={errors.fullName} />
           <TextField label="Email" name="email" type="email" autoComplete="email" error={errors.email} />
-          <TextField label="Password" name="password" type="password" autoComplete="new-password" hint="At least 8 characters" error={errors.password} />
+          <PasswordField label="Password" name="password" autoComplete="new-password" hint="At least 8 characters" error={errors.password} />
           <Button type="submit" busy={busy}>Create account</Button>
+          <p className="text-xs text-ink-500">We will email you a 6-digit code to verify that this address is yours.</p>
         </form>
       </Card>
       <p className="mt-4 text-sm text-ink-500">Already registered? <Link className="text-brand-700 underline" to="/signin">Sign in</Link>
@@ -244,6 +246,7 @@ export function DashboardRedirect() {
   if (loading || !profile) return <LoadingState label="Opening your dashboard" />
   if (isPlatformAdmin) return <Navigate to="/admin" replace />
   if (memberships[0]) return <Navigate to={'/org/' + memberships[0].org_id} replace />
+  if (session?.user.user_metadata?.signup_intent === 'organization') return <Navigate to="/orgs/new" replace />
   return <Navigate to="/me" replace />
 }
 
@@ -350,12 +353,135 @@ export function ResetPasswordPage() {
         {done ? <Alert tone="success">Password updated. Taking you to your dashboard…</Alert> : (
           <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
             {formError && <Alert tone="error">{formError}</Alert>}
-            <TextField label="New password" name="password" type="password" autoComplete="new-password" hint="At least 8 characters" error={errors.password} />
+            <PasswordField label="New password" name="password" autoComplete="new-password" hint="At least 8 characters" error={errors.password} />
             <TextField label="Confirm new password" name="confirm" type="password" autoComplete="new-password" error={errors.confirm} />
             <Button type="submit" busy={busy}>Update password</Button>
           </form>
         )}
       </Card>
+    </div>
+  )
+}
+
+/**
+ * Step 2 of registration: the 6-digit code Supabase Auth emailed. Supabase
+ * generates, expires and validates the code; this page never stores or logs it.
+ */
+export function VerifyEmailPage() {
+  const { session, verifySignupCode, resendConfirmation } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const now = useNow(1000)
+  const fromState = (location.state ?? null) as { email?: string; name?: string; next?: string; sentAt?: number } | null
+  const [pending, setPending] = useState(() => (fromState?.email
+    ? { email: fromState.email, name: fromState.name, next: safeNext(fromState.next ?? null, '/dashboard'), sentAt: fromState.sentAt ?? 0 }
+    : readPendingSignup()))
+  const [email, setEmail] = useState(pending?.email ?? '')
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+  const [notice, setNotice] = useState<{ tone: 'error' | 'success' | 'info'; text: string } | null>(null)
+  const wait = cooldownLeft(pending?.sentAt || null, now)
+  const next = safeNext(pending?.next ?? null, '/dashboard')
+
+  // The app shell moves focus to <main> after each navigation; put it on the code field afterwards.
+  useEffect(() => {
+    const t = setTimeout(() => (document.querySelector('input[name="code"]') as HTMLInputElement | null)?.focus(), 50)
+    return () => clearTimeout(t)
+  }, [])
+  useEffect(() => {
+    if (done) {
+      const t = setTimeout(() => navigate(next, { replace: true }), 1500)
+      return () => clearTimeout(t)
+    }
+  }, [done, next, navigate])
+  if (session && !done) return <Navigate to={next} replace />
+
+  async function onVerify(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (busy) return
+    const target = (pending?.email ?? email).trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) return setNotice({ tone: 'error', text: 'Enter the email address you registered with.' })
+    if (!isCompleteOtp(code)) return setNotice({ tone: 'error', text: `Enter the ${OTP_LENGTH}-digit code from the email.` })
+    setBusy(true); setNotice(null)
+    try {
+      await verifySignupCode(target, code)
+      clearPendingSignup()
+      setDone(true)
+    } catch (err) {
+      const e2 = toAppError(err)
+      setNotice({ tone: 'error', text: e2.code === 'AUTH_OTP_INVALID'
+        ? 'That code is incorrect or has expired. Check the newest email, or request a new code. If you already verified this address, sign in instead.'
+        : e2.message })
+      setCode('')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onResend() {
+    const target = (pending?.email ?? email).trim()
+    if (!target || wait > 0 || busy) return
+    setBusy(true); setNotice(null)
+    try {
+      await resendConfirmation(target)
+      const updated = { email: target, name: pending?.name, next, sentAt: Date.now() }
+      savePendingSignup(updated); setPending(updated)
+      setNotice({ tone: 'success', text: 'If this address has an unverified account, a new code is on its way. Only the newest code works.' })
+    } catch (err) {
+      const e2 = toAppError(err)
+      if (e2.code === 'AUTH_RATE_LIMIT' || e2.code === 'NETWORK') setNotice({ tone: 'error', text: e2.message })
+      else {
+        // Same answer whether or not the account exists (no account discovery).
+        const updated = { email: target, name: pending?.name, next, sentAt: Date.now() }
+        savePendingSignup(updated); setPending(updated)
+        setNotice({ tone: 'success', text: 'If this address has an unverified account, a new code is on its way. Only the newest code works.' })
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (done) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col gap-4">
+        <h1 className="text-2xl font-semibold">Email verified</h1>
+        <Alert tone="success">Welcome to Worldkin Roster{pending?.name ? `, ${pending.name}` : ''}! Your account is active. Taking you to the next step…</Alert>
+        <Link className="text-sm text-brand-700 underline" to={next}>Continue now</Link>
+      </div>
+    )
+  }
+  return (
+    <div className="mx-auto max-w-md">
+      <h1 className="mb-2 text-2xl font-semibold">Verify your email</h1>
+      <p className="mb-6 text-sm text-ink-700">
+        {pending?.name ? <>Welcome, {pending.name}! </> : null}
+        {pending?.email
+          ? <>We sent a {OTP_LENGTH}-digit code to <strong>{maskEmail(pending.email)}</strong>. Enter it below to activate your account.</>
+          : <>Enter the email you registered with and the {OTP_LENGTH}-digit code we sent you.</>}
+      </p>
+      <Card>
+        <form className="flex flex-col gap-4" onSubmit={onVerify} noValidate>
+          <div aria-live="polite">{notice && <Alert tone={notice.tone}>{notice.text}</Alert>}</div>
+          {!pending?.email && <TextField label="Email" name="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.currentTarget.value)} />}
+          <TextField label="Verification code" name="code" value={code} autoFocus
+            inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={OTP_LENGTH + 4}
+            className="w-full rounded-md border border-black/20 bg-white px-3 py-3 text-center font-mono text-2xl tracking-[0.5em]"
+            hint="Paste the whole code or type it — spaces and dashes are ignored."
+            onChange={(e) => setCode(normalizeOtp(e.currentTarget.value))} />
+          <Button type="submit" busy={busy} disabled={!isCompleteOtp(code)}>Verify email</Button>
+        </form>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-black/10 pt-4 text-sm">
+          <span className="text-ink-500">Didn’t get it? Check spam, or</span>
+          <Button variant="ghost" onClick={onResend} disabled={wait > 0 || busy} aria-live="polite">
+            {wait > 0 ? `Resend code in ${wait}s` : 'Resend code'}
+          </Button>
+        </div>
+      </Card>
+      <p className="mt-4 text-sm text-ink-500">
+        You can also use the one-click link in the same email. Wrong address? <Link className="text-brand-700 underline" to="/join" onClick={() => clearPendingSignup()}>Start again</Link>
+        {' · '}<Link className="text-brand-700 underline" to="/signin">Sign in</Link>
+      </p>
     </div>
   )
 }

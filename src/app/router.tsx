@@ -26,6 +26,7 @@ const OrgTeamPage = page(() => import('../pages/OrgTeamPage'), 'OrgTeamPage')
 const AuditPage = page(() => import('../pages/AuditPage'), 'AuditPage')
 const AdminPage = page(() => import('../pages/AdminPage'), 'AdminPage')
 const JoinPage = page(() => import('../pages/AuthPages'), 'JoinPage')
+const VerifyEmailPage = page(() => import('../pages/AuthPages'), 'VerifyEmailPage')
 const DashboardRedirect = page(() => import('../pages/AuthPages'), 'DashboardRedirect')
 const ForgotPasswordPage = page(() => import('../pages/AuthPages'), 'ForgotPasswordPage')
 const ResetPasswordPage = page(() => import('../pages/AuthPages'), 'ResetPasswordPage')
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
       { path: 'auth/confirmed', element: <AuthConfirmedPage /> },
       { path: 'auth/reset', element: <ResetPasswordPage /> },
       { path: 'join', element: <JoinPage /> },
+      { path: 'verify-email', element: <VerifyEmailPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'dashboard', element: <DashboardRedirect /> },
       { path: 'organizations', element: <OrganizationsPage /> },

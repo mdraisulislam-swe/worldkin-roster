@@ -97,7 +97,8 @@ export function toAppError(err: unknown): AppError {
     return new AppError('Network problem. Check your connection and try again.', 'NETWORK', true)
   }
   if (/invalid login credentials/i.test(message)) return new AppError('Email or password is incorrect.', 'AUTH_INVALID')
-  if (/email not confirmed/i.test(message) || code === 'email_not_confirmed') return new AppError('Please confirm your email address first. Check your inbox, or send a new confirmation link below.', 'AUTH_UNCONFIRMED')
+  if (/email not confirmed/i.test(message) || code === 'email_not_confirmed') return new AppError('Please verify your email address first. Enter the code we emailed you, or request a new one below.', 'AUTH_UNCONFIRMED')
+  if (code === 'otp_expired' || /token has expired or is invalid|otp.*(expired|invalid)/i.test(message)) return new AppError('That code is incorrect or has expired. Check the newest email, or request a new code.', 'AUTH_OTP_INVALID')
   if (/rate limit|over_email_send_rate_limit/i.test(message) || code === 'over_email_send_rate_limit') return new AppError('Too many emails were requested. Please wait a few minutes and try again.', 'AUTH_RATE_LIMIT', true)
   if (/user already registered/i.test(message) || code === 'user_already_exists') return new AppError('An account with this email may already exist. Try signing in instead.', 'AUTH_EXISTS')
   return new AppError(message || 'Something went wrong. Please try again.', code, true)
