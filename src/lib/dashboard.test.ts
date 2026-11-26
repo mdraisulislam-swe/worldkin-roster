@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dashboardPath, firstName, profileCompletion, summarizeApplications } from './dashboard'
+import { dashboardPath, firstName, groupByDay, profileCompletion, summarizeApplications } from './dashboard'
 import type { MyApplication } from './platform'
 
 const app = (over: Partial<MyApplication>): MyApplication => ({
@@ -45,5 +45,15 @@ describe('dashboard destination', () => {
     expect(dashboardPath({ isPlatformAdmin: true, orgIds: ['a', 'b'] })).toBe('/admin')
     expect(dashboardPath({ isPlatformAdmin: false, orgIds: [], signupIntent: 'organization' })).toBe('/orgs/new')
     expect(dashboardPath({ isPlatformAdmin: false, orgIds: [], signupIntent: 'admin' })).toBe('/me')
+  })
+})
+
+describe('agenda grouping', () => {
+  it('groups by local day in time order with Today/Tomorrow labels', () => {
+    const now = new Date(2026, 10, 26, 9, 0).getTime()
+    const at = (d: number, h: number) => ({ at: new Date(2026, 10, d, h).toISOString() })
+    const groups = groupByDay([at(28, 10), at(26, 18), at(27, 8), at(26, 12)], (x) => x.at, now)
+    expect(groups.map((g) => g.label.startsWith('Today') || g.label.startsWith('Tomorrow') ? g.label : 'other')).toEqual(['Today', 'Tomorrow', 'other'])
+    expect(groups[0].items.map((x) => new Date(x.at).getHours())).toEqual([12, 18])
   })
 })

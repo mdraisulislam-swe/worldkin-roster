@@ -10,8 +10,9 @@ import { downloadIcs } from '../lib/calendar'
 import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Stat, StatusBadge } from '../components/ui'
 import { useDialog } from '../components/dialog'
 import { VolunteerNav } from '../components/DashboardNav'
-import { getMyApplications } from '../lib/platform'
-import { firstName, profileCompletion, summarizeApplications } from '../lib/dashboard'
+import { getMyApplications, getNotifications } from '../lib/platform'
+import { firstName, groupByDay, profileCompletion, summarizeApplications } from '../lib/dashboard'
+import { formatDateTime } from '../lib/format'
 
 function NextStep({ text, to, cta, tone }: { text: string; to: string; cta: string; tone?: 'action' }) {
   return (
@@ -36,6 +37,8 @@ export function MyShiftsPage() {
   const invites = useQuery({ queryKey: ['my-invites', uid], queryFn: getMyInvites })
   // Same query key as the Applications page, so the data is shared, not fetched twice.
   const apps = useQuery({ queryKey: ['my-applications'], queryFn: getMyApplications })
+  // Same key and query as the Notifications page (own rows only, enforced by RLS).
+  const notes = useQuery({ queryKey: ['notifications', uid], queryFn: () => getNotifications(uid) })
 
   const cancel = useMutation({
     mutationFn: (id: string) => cancelSignup(id),
@@ -136,6 +139,28 @@ export function MyShiftsPage() {
         )}
       </section>
 
+      {notes.data && notes.data.length > 0 && (
+        <section className="mb-8" aria-labelledby="notes-h">
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <h2 id="notes-h" className="text-lg font-semibold">Recent updates</h2>
+            <Link className="text-sm text-brand-700 underline" to="/me/notifications">All notifications</Link>
+          </div>
+          <ul className="flex flex-col divide-y divide-black/5 rounded-lg border border-black/10 bg-white">
+            {notes.data.slice(0, 3).map((n) => (
+              <li key={n.id} className="flex flex-wrap items-start justify-between gap-2 px-4 py-3">
+                <div className="min-w-0">
+                  <p className={n.read_at ? 'text-sm text-ink-700' : 'text-sm font-semibold text-ink-900'}>
+                    {!n.read_at && <span className="sr-only">Unread: </span>}{n.title}
+                  </p>
+                  {n.body && <p className="mt-0.5 line-clamp-2 text-sm text-ink-500">{n.body}</p>}
+                </div>
+                <span className="shrink-0 text-xs text-ink-500">{formatDateTime(n.created_at)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section aria-labelledby="up-h">
         <h2 id="up-h" className="mb-3 text-lg font-semibold">Upcoming</h2>
         {signups.isPending && <LoadingState />}
@@ -143,8 +168,12 @@ export function MyShiftsPage() {
         {signups.data && upcoming.length === 0 && (
           <EmptyState title="No upcoming shifts"><Link className="text-brand-700 underline" to="/explore">Find an opportunity</Link></EmptyState>
         )}
+        <div className="flex flex-col gap-5">
+          {groupByDay(upcoming, (s) => s.shifts!.starts_at, now).map((day) => (
+            <div key={day.key}>
+              <h3 className="mb-2 text-sm font-semibold text-ink-700">{day.label}</h3>
         <ul className="flex flex-col gap-2">
-          {upcoming.map((s) => (
+          {day.items.map((s) => (
             <li key={s.id}>
               <Card className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -169,6 +198,9 @@ export function MyShiftsPage() {
             </li>
           ))}
         </ul>
+            </div>
+          ))}
+        </div>
       </section>
 
       {past.length > 0 && (

@@ -51,3 +51,24 @@ export function dashboardPath(o: { isPlatformAdmin: boolean; orgIds: string[]; s
   if (o.signupIntent === 'organization') return '/orgs/new'
   return '/me'
 }
+
+/** Groups dated items by the viewer's local calendar day, in order, with friendly labels. */
+export function groupByDay<T>(items: T[], dateOf: (t: T) => string, now: number) {
+  const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+  const today = new Date(now)
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+  const fmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'short' })
+  const groups: { key: string; label: string; items: T[] }[] = []
+  for (const it of [...items].sort((a, b) => new Date(dateOf(a)).getTime() - new Date(dateOf(b)).getTime())) {
+    const d = new Date(dateOf(it))
+    const key = dayKey(d)
+    let g = groups.find((x) => x.key === key)
+    if (!g) {
+      const label = key === dayKey(today) ? 'Today' : key === dayKey(tomorrow) ? 'Tomorrow' : fmt.format(d)
+      g = { key, label, items: [] }
+      groups.push(g)
+    }
+    g.items.push(it)
+  }
+  return groups
+}
