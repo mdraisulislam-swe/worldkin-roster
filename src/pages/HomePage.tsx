@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router'
+import { useState, type FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router'
+import { Icon } from '../components/Icon'
 import { useAuth } from '../auth/AuthProvider'
 import { CAUSE_LABELS } from '../lib/format'
 import { getPlatformStats, listOrganizations, searchOpportunities } from '../lib/platform'
@@ -21,22 +23,31 @@ export function HomePage() {
 
   return (
     <div className="flex flex-col gap-16 py-4 sm:gap-20 sm:py-10">
-      <section aria-labelledby="hero-h" className="border-b border-black/5 pb-14 sm:pb-16">
-        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-700">Global volunteer &amp; opportunity platform</p>
-        <h1 id="hero-h" className="mt-4 max-w-3xl text-5xl font-semibold leading-[1.05] tracking-tight text-ink-900 sm:text-6xl">Everyone is kin.</h1>
-        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink-700 sm:text-xl">
-          Worldkin Roster connects volunteers with verified organizations — voluntary, stipend-based and paid roles,
-          fair selection, capacity-safe shifts and participation records that cannot be faked.
-        </p>
-        <div className="mt-10 grid max-w-3xl gap-4 sm:grid-cols-2">
-          <Link to={session ? '/explore' : '/signup?as=volunteer'} className="rounded-lg bg-brand-700 p-5 text-white shadow-sm transition-colors hover:bg-brand-800">
-            <span className="block font-semibold">{session ? 'Find an opportunity' : 'Join as a volunteer'}</span>
-            <span className="text-sm text-white/85">Build a profile, apply, get selected, log verified hours.</span>
-          </Link>
-          <Link to={session ? '/orgs/new' : '/signup?as=organization'} className="rounded-lg border border-black/15 bg-white p-5 shadow-sm transition-colors hover:border-brand-600">
-            <span className="block font-semibold text-ink-900">Register your organization</span>
-            <span className="text-sm text-ink-500">Get verified, publish opportunities, select volunteers.</span>
-          </Link>
+      <section aria-labelledby="hero-h" className="overflow-hidden rounded-[28px] bg-forest-900 text-white lg:grid lg:min-h-[540px] lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="flex flex-col justify-center gap-6 px-6 py-10 sm:px-10 lg:px-14 lg:py-16">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-sage-200">Volunteering · internships · community programmes</p>
+          <h1 id="hero-h" className="text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl">Everyone is kin.</h1>
+          <p className="max-w-xl text-lg leading-relaxed text-sage-200">
+            Find meaningful opportunities with verified organizations — voluntary, stipend-based and paid — take part, and build a
+            record of experience the organization itself confirms.
+          </p>
+          <HeroSearch />
+          <div className="flex flex-wrap gap-3">
+            <Link to={session ? '/explore' : '/signup?as=volunteer'} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 text-[15px] font-semibold text-forest-900 hover:bg-brand-50">
+              <Icon name="user" size={18} />{session ? 'Find an opportunity' : 'Join as a volunteer'}
+            </Link>
+            <Link to={session ? '/orgs/new' : '/signup?as=organization'} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/35 px-4 text-[15px] font-semibold text-white hover:bg-white/10">
+              <Icon name="building" size={18} />Register an organization
+            </Link>
+          </div>
+        </div>
+        <div className="relative min-h-64 bg-brand-800 lg:min-h-0">
+          {/* Decorative community photo (Unsplash, free licence); hidden if it cannot load. */}
+          <img src="https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=1200&q=70" alt=""
+            loading="eager" className="absolute inset-0 h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+          <span className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow">
+            <Icon name="shield-check" size={15} />Every organization is verified
+          </span>
         </div>
       </section>
 
@@ -164,3 +175,25 @@ const VOLUNTEER_STEPS = [
   { title: 'Get verified', text: 'Organization staff confirm attendance and hours. You cannot record your own hours.' },
   { title: 'Build your passport', text: 'Verified experience and certificates collect in a printable experience passport.' },
 ]
+
+/** Hero search: hands the words and place to Explore's existing filters (q, city). */
+function HeroSearch() {
+  const navigate = useNavigate()
+  const [q, setQ] = useState(''), [place, setPlace] = useState('')
+  function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    const p = new URLSearchParams()
+    if (q.trim()) p.set('q', q.trim())
+    if (place.trim()) p.set('city', place.trim())
+    navigate('/explore' + (p.size ? '?' + p.toString() : ''))
+  }
+  return (
+    <form role="search" onSubmit={onSubmit} className="flex max-w-xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-lg sm:flex-row">
+      <label className="flex flex-1 items-center gap-2 px-3 text-ink-500"><Icon name="search" size={18} /><span className="sr-only">What do you want to do?</span>
+        <input value={q} onChange={(e) => setQ(e.currentTarget.value)} placeholder="Teaching, food relief, climate…" className="min-h-11 w-full bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-500/70" /></label>
+      <label className="flex flex-1 items-center gap-2 border-black/5 px-3 text-ink-500 sm:border-l"><Icon name="map-pin" size={18} /><span className="sr-only">City</span>
+        <input value={place} onChange={(e) => setPlace(e.currentTarget.value)} placeholder="City" className="min-h-11 w-full bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-500/70" /></label>
+      <button className="min-h-11 rounded-lg bg-brand-700 px-5 text-[15px] font-semibold text-white hover:bg-brand-800">Find opportunities</button>
+    </form>
+  )
+}

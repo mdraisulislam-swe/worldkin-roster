@@ -1,24 +1,26 @@
-/* Reusable, accessible UI primitives (functional first; visual polish via Figma later). */
+/* Reusable, accessible UI primitives — styled to the approved design system (docs/DESIGN_SYSTEM.md). */
 import { useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import type { Enums } from '../lib/database.types'
 import { SIGNUP_STATUS_LABELS } from '../lib/format'
+import { Icon, type IconName } from './Icon'
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 
 export function Button({
   variant = 'primary', busy = false, className, children, disabled, ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost'; busy?: boolean }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'accent'; busy?: boolean }) {
   return (
     <button
       {...rest}
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       className={cx(
-        'inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-transparent px-4 text-[15px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
         variant === 'primary' && 'bg-brand-700 text-white hover:bg-brand-800',
-        variant === 'secondary' && 'border border-black/15 bg-white text-ink-900 hover:bg-black/5',
+        variant === 'secondary' && 'border-[#d5d9d2] bg-white text-ink-900 hover:border-brand-600 hover:text-brand-700',
         variant === 'danger' && 'bg-rose-700 text-white hover:bg-rose-800',
         variant === 'ghost' && 'text-brand-700 hover:bg-brand-50',
+        variant === 'accent' && 'bg-terracotta-700 text-white hover:brightness-95',
         className,
       )}
     >
@@ -34,16 +36,16 @@ function FieldShell({ label, error, hint, children }: FieldShellProps) {
   const hintId = hint ? `${id}-hint` : undefined
   const errId = error ? `${id}-err` : undefined
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-sm font-medium text-ink-900">{label}</label>
       {children({ id, describedBy: [hintId, errId].filter(Boolean).join(' ') || undefined })}
       {hint && <p id={hintId} className="text-xs text-ink-500">{hint}</p>}
-      {error && <p id={errId} className="text-xs font-medium text-rose-700">{error}</p>}
+      {error && <p id={errId} className="flex items-center gap-1 text-xs font-medium text-rose-700"><Icon name="x-circle" size={14} />{error}</p>}
     </div>
   )
 }
 const inputCls = (error?: string) =>
-  cx('w-full rounded-md border bg-white px-3 py-2 text-sm', error ? 'border-rose-600' : 'border-black/20')
+  cx('min-h-11 w-full rounded-lg border bg-white px-3 py-2 text-[15px] text-ink-900 placeholder:text-ink-500/70 focus:border-brand-600 focus:outline-none focus:ring-3 focus:ring-brand-600/25', error ? 'border-rose-600' : 'border-[#d5d9d2]')
 
 export function TextField({ label, error, hint, ...rest }: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string; hint?: string }) {
   return (
@@ -94,25 +96,27 @@ export function Checkbox({ label, ...rest }: InputHTMLAttributes<HTMLInputElemen
   const id = useId()
   return (
     <div className="flex items-center gap-2">
-      <input id={id} type="checkbox" className="h-4 w-4" {...rest} />
+      <input id={id} type="checkbox" className="h-4 w-4 accent-brand-700" {...rest} />
       <label htmlFor={id} className="text-sm text-ink-900">{label}</label>
     </div>
   )
 }
 
+const ALERT_ICON: Record<string, IconName> = { info: 'info', success: 'check-circle', error: 'x-circle', warning: 'alert' }
 export function Alert({ tone = 'info', children }: { tone?: 'info' | 'success' | 'error' | 'warning'; children: ReactNode }) {
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
       className={cx(
-        'rounded-md border px-3 py-2 text-sm',
+        'flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-sm',
         tone === 'info' && 'border-brand-100 bg-brand-50 text-brand-800',
         tone === 'success' && 'border-emerald-200 bg-emerald-50 text-emerald-900',
         tone === 'error' && 'border-rose-200 bg-rose-50 text-rose-900',
         tone === 'warning' && 'border-amber-200 bg-amber-50 text-amber-900',
       )}
     >
-      {children}
+      <Icon name={ALERT_ICON[tone]} size={18} className="mt-px" />
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   )
 }
@@ -128,7 +132,7 @@ export function LoadingState({ label = 'Loading' }: { label?: string }) {
 
 export function ErrorState({ title = 'Something went wrong', message, onRetry }: { title?: string; message?: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="my-6 rounded-lg border border-rose-200 bg-rose-50 p-4">
+    <div role="alert" className="my-6 rounded-xl border border-rose-200 bg-rose-50 p-5">
       <p className="font-medium text-rose-900">{title}</p>
       {message && <p className="mt-1 text-sm text-rose-800">{message}</p>}
       {onRetry && <Button variant="secondary" className="mt-3" onClick={onRetry}>Try again</Button>}
@@ -138,9 +142,10 @@ export function ErrorState({ title = 'Something went wrong', message, onRetry }:
 
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="my-4 rounded-lg border border-dashed border-black/15 bg-white p-6 text-center">
-      <p className="font-medium text-ink-900">{title}</p>
-      {children && <div className="mt-2 text-sm text-ink-500">{children}</div>}
+    <div className="my-4 flex flex-col items-center rounded-xl border border-neutral-100 bg-white px-6 py-10 text-center">
+      <span className="mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-brand-50 text-brand-700"><Icon name="inbox" size={26} /></span>
+      <p className="font-display text-lg font-semibold text-ink-900">{title}</p>
+      {children && <div className="mt-2 max-w-md text-sm text-ink-500">{children}</div>}
     </div>
   )
 }
@@ -149,7 +154,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-semibold text-ink-900">{title}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">{title}</h1>
         {subtitle && <div className="mt-1 text-sm text-ink-500">{subtitle}</div>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -158,14 +163,14 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 }
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx('rounded-lg border border-black/10 bg-white p-4', className)}>{children}</div>
+  return <div className={cx('rounded-xl border border-neutral-100 bg-white p-5 shadow-[0_1px_2px_rgba(20,26,34,0.04)]', className)}>{children}</div>
 }
 
 export function Stat({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Card>
-      <p className="text-xs uppercase tracking-wide text-ink-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-ink-900">{value}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-ink-500">{label}</p>
+      <p className="mt-1 font-display text-3xl font-bold tabular-nums text-ink-900">{value}</p>
     </Card>
   )
 }

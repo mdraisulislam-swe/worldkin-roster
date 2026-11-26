@@ -5,9 +5,10 @@ import { CONFIRM_PATH, readAuthRedirectError } from '../../lib/authRedirect'
 import { useQuery } from '@tanstack/react-query'
 import { getUnreadCount } from '../../lib/platform'
 import { LoadingState } from '../ui'
+import { Icon } from '../Icon'
 
 const linkCls = ({ isActive }: { isActive: boolean }) =>
-  `rounded-md px-2.5 py-1.5 text-sm ${isActive ? 'bg-brand-50 font-medium text-brand-800' : 'text-ink-700 hover:bg-black/5'}`
+  `rounded-lg px-3 py-2 text-[14.5px] font-medium ${isActive ? 'bg-brand-50 text-brand-700' : 'text-ink-700 hover:bg-neutral-100'}`
 
 export function AppShell() {
   const { session, profile, memberships, isPlatformAdmin, signOut } = useAuth()
@@ -75,18 +76,18 @@ export function AppShell() {
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2 focus:shadow">
         Skip to main content
       </a>
-      <header className="border-b border-black/10 bg-white">
+      <header className="sticky top-0 z-40 border-b border-neutral-100 bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link to="/" className="flex shrink-0 items-center gap-2 font-semibold text-ink-900">
-            <img src="/favicon.svg" alt="" width={28} height={28} />
+          <Link to="/" className="flex shrink-0 items-center gap-2.5 font-display text-lg font-bold text-forest-900">
+            <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-brand-700 text-white"><Icon name="users" size={18} /></span>
             <span>Worldkin Roster</span>
           </Link>
           <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">{nav}</nav>
           <div className="hidden items-center gap-2 md:flex">
             {session ? (
               <>
-                <Link to="/me/notifications" className="relative rounded-md px-2 py-1.5 text-sm text-ink-700 hover:bg-black/5" aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}>
-                  <span aria-hidden>🔔</span>
+                <Link to="/me/notifications" className="relative grid h-10 w-10 place-items-center rounded-lg text-ink-700 hover:bg-neutral-100" aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}>
+                  <Icon name="bell" />
                   {unread > 0 && <span aria-hidden className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-rose-600 px-1 text-center text-[10px] font-semibold leading-4 text-white">{unread > 9 ? '9+' : unread}</span>}
                 </Link>
                 <Link to="/me/profile" className="max-w-40 truncate text-sm text-ink-700 hover:underline">{profile?.full_name ?? 'Profile'}</Link>
@@ -97,14 +98,14 @@ export function AppShell() {
               </>
             ) : (
               <>
-                <Link to="/signin" className="rounded-md px-2.5 py-1.5 text-sm text-ink-700 hover:bg-black/5">Sign in</Link>
-                <Link to="/join" className="rounded-md bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800">Join</Link>
+                <Link to="/signin" className="rounded-lg px-3 py-2 text-[14.5px] font-medium text-brand-700 hover:bg-brand-50">Sign in</Link>
+                <Link to="/join" className="rounded-lg bg-brand-700 px-4 py-2 text-[14.5px] font-semibold text-white hover:bg-brand-800">Join</Link>
               </>
             )}
           </div>
-          <button type="button" className="rounded-md border border-black/15 px-3 py-1.5 text-sm md:hidden"
-            aria-expanded={open} aria-controls="mobile-nav" onClick={() => setOpen((v) => !v)}>
-            Menu
+          <button type="button" className="grid h-10 w-10 place-items-center rounded-lg border border-neutral-100 bg-white md:hidden"
+            aria-expanded={open} aria-controls="mobile-nav" aria-label={open ? 'Close menu' : 'Menu'} onClick={() => setOpen((v) => !v)}>
+            <Icon name={open ? 'x' : 'menu'} />
           </button>
         </div>
         {open && (
