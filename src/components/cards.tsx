@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { CAUSE_LABELS, MODE_LABELS, formatDateTime, spotsLabel, startsIn } from '../lib/format'
+import { CAUSE_LABELS, MODE_LABELS, formatDateTime, seatsSummary, spotsLabel, startsIn } from '../lib/format'
 import { COMPENSATION_LABELS, ORG_TYPE_LABELS, type CompensationType, type OpportunityCard, type OrgCard } from '../lib/platform'
 import { Card } from './ui'
 
@@ -24,6 +24,8 @@ export function OpportunityCardView({ o, now }: { o: OpportunityCard; now: numbe
       <h3 className="mt-1 font-semibold leading-snug"><Link className="hover:underline" to={`/opportunities/${o.id}`}>{o.title}</Link></h3>
       <p className="text-sm text-ink-500">
         <Link className="hover:underline" to={`/organizations/${o.org_slug}`}>{o.org_name}</Link>
+        {/* Public listings exist only for verified organizations (is_opportunity_public). */}
+        <span className="ml-1 text-xs font-medium text-emerald-800" title="Verified by Worldkin">✓<span className="sr-only"> verified organization</span></span>
         {o.city ? ` · ${o.city}` : ''}{o.country_code ? `, ${o.country_code}` : ''}
       </p>
       <div className="mt-3 flex flex-wrap gap-1.5">
@@ -38,6 +40,7 @@ export function OpportunityCardView({ o, now }: { o: OpportunityCard; now: numbe
         {o.application_deadline
           ? <p className={deadlineSoon ? 'font-medium text-amber-900' : ''}>Apply by {formatDateTime(o.application_deadline)}</p>
           : <p>Next shift: {o.next_shift_at ? formatDateTime(o.next_shift_at) : 'none scheduled'}</p>}
+        {seatsSummary(o.open_spots, o.upcoming_shifts) && <p className="text-ink-500">{seatsSummary(o.open_spots, o.upcoming_shifts)}</p>}
         {o.compensation_type !== 'voluntary' && o.compensation_details && <p className="text-ink-500">{o.compensation_details}</p>}
       </div>
     </Card>

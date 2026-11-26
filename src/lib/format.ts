@@ -63,6 +63,13 @@ export function spotsLabel(openSpots: number, upcomingShifts: number): { text: s
   return null
 }
 
+/** Factual seat summary from search_opportunities: open seats (capacity − confirmed) across upcoming shifts. */
+export function seatsSummary(openSpots: number, upcomingShifts: number): string | null {
+  if (upcomingShifts <= 0) return null
+  const shifts = `${upcomingShifts} upcoming shift${upcomingShifts === 1 ? '' : 's'}`
+  return openSpots > 0 ? `${openSpots} open seat${openSpots === 1 ? '' : 's'} · ${shifts}` : `No open seats · ${shifts}`
+}
+
 /** "Org name" -> "org-name" (matches the database slug rule). */
 export function slugify(input: string): string {
   return input
