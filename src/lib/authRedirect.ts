@@ -9,6 +9,20 @@
  */
 
 export const CONFIRM_PATH = '/auth/confirmed'
+export const RESET_PATH = '/auth/reset'
+
+/**
+ * A password-recovery link lands wherever Supabase allows: the requested
+ * /auth/reset, or the Site URL root when that path is not on the Redirect URL
+ * allow-list. Either way the user must see the reset form, not a signed-in home
+ * page. Returns the path to switch to (keeping the fragment for supabase-js),
+ * or null when nothing should change. Only the fragment's "type" is read.
+ */
+export function recoveryLandingPath(pathname: string, hash: string): string | null {
+  if (pathname === RESET_PATH) return null
+  const p = new URLSearchParams(hash.replace(/^#/, ''))
+  return p.get('type') === 'recovery' && (p.has('access_token') || p.has('error_code')) ? RESET_PATH : null
+}
 
 /** Only same-site relative paths (prevents open redirects). */
 export function safeNext(next: string | null | undefined, fallback = '/me'): string {
@@ -41,12 +55,12 @@ export function authRedirectMessage(err: AuthRedirectError): { title: string; me
   if (err.code === 'otp_expired' || /expired|invalid/i.test(err.description)) {
     return {
       title: 'This confirmation link has expired or was already used',
-      message: 'If you already confirmed your email, just sign in. Otherwise enter your email below and we will send a new link.',
+      message: 'If you already confirmed your email, just sign in. Otherwise enter your email below and we will send a new 6-digit code.',
       canResend: true,
     }
   }
   if (err.code === 'access_denied') {
-    return { title: 'Confirmation was not completed', message: 'The link could not be used. Request a new confirmation email below.', canResend: true }
+    return { title: 'Confirmation was not completed', message: 'The link could not be used. Request a new verification code below.', canResend: true }
   }
-  return { title: 'We could not confirm your email', message: 'Please try again, or request a new confirmation email below.', canResend: true }
+  return { title: 'We could not confirm your email', message: 'Please try again, or request a new verification code below.', canResend: true }
 }

@@ -5,7 +5,7 @@ import { Alert, Button, Card, LoadingState, PasswordField, TextField } from '../
 import { OTP_LENGTH, clearPendingSignup, cooldownLeft, isCompleteOtp, maskEmail, normalizeOtp, readPendingSignup, savePendingSignup } from '../lib/otp'
 import { useNow } from '../lib/useNow'
 import { toAppError } from '../lib/errors'
-import { authRedirectMessage, hasAuthFragment, readAuthRedirectError, safeNext, type AuthRedirectError } from '../lib/authRedirect'
+import { RESET_PATH, authRedirectMessage, hasAuthFragment, readAuthRedirectError, safeNext, type AuthRedirectError } from '../lib/authRedirect'
 import { fieldErrors, signInSchema, signUpSchema } from '../lib/validation'
 import { supabase } from '../lib/supabase'
 import { OtpInput } from '../components/OtpInput'
@@ -19,9 +19,15 @@ import { dashboardPath } from '../lib/dashboard'
  */
 function ResendConfirmation({ defaultEmail = '' }: { defaultEmail?: string }) {
   const { resendConfirmation } = useAuth()
+  const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Same next step whether or not the address has an account (no account discovery).
+  const toCodeScreen = (email: string, sentAt: number) => {
+    const pending = { email, next: '/dashboard', sentAt }
+    savePendingSignup(pending)
+    navigate('/verify-email', { state: pending })
+  }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -31,24 +37,21 @@ function ResendConfirmation({ defaultEmail = '' }: { defaultEmail?: string }) {
     setError(null); setBusy(true)
     try {
       await resendConfirmation(email)
-      setSent(true)
+      toCodeScreen(email, Date.now())
     } catch (err) {
       const e2 = toAppError(err)
       // Only surface errors that do not reveal whether the account exists.
       if (e2.code === 'AUTH_RATE_LIMIT' || e2.code === 'NETWORK') setError(e2.message)
-      else setSent(true)
+      else toCodeScreen(email, Date.now())
     } finally {
       setBusy(false)
     }
   }
 
-  if (sent) {
-    return <Alert tone="success">If this email has an unconfirmed account, a new confirmation link is on its way. Links expire, so use the newest one.</Alert>
-  }
   return (
     <form className="flex flex-col gap-3" onSubmit={onSubmit} noValidate>
-      <TextField label="Email for a new confirmation link" name="resendEmail" type="email" autoComplete="email" defaultValue={defaultEmail} error={error ?? undefined} />
-      <Button type="submit" variant="secondary" busy={busy}>Send a new confirmation link</Button>
+      <TextField label="Email for a new verification code" name="resendEmail" type="email" autoComplete="email" defaultValue={defaultEmail} error={error ?? undefined} />
+      <Button type="submit" variant="secondary" busy={busy}>Send a new 6-digit code</Button>
     </form>
   )
 }
@@ -57,6 +60,7 @@ export function SignInPage() {
   const { session, signIn } = useAuth()
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const notice = (useLocation().state as { notice?: string } | null)?.notice
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<{ message: string; unconfirmed: boolean; email: string } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -85,6 +89,7 @@ export function SignInPage() {
       <h1 className="mb-6 text-2xl font-bold tracking-tight sm:text-3xl">Sign in</h1>
       <Card>
         <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
+          {notice && !formError && <Alert tone="success">{notice}</Alert>}
           {formError && <Alert tone="error">{formError.message}</Alert>}
           <TextField label="Email" name="email" type="email" autoComplete="email" error={errors.email} />
           <PasswordField label="Password" name="password" autoComplete="current-password" error={errors.password} />
@@ -276,7 +281,6 @@ export function DashboardRedirect() {
   return <Navigate to={to} replace />
 }
 
-const RESET_PATH = '/auth/reset'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function ForgotPasswordPage() {
@@ -347,7 +351,9 @@ export function ResetPasswordPage() {
       const { error } = await supabase.auth.updateUser({ password })
       if (error) throw toAppError(error)
       setDone(true)
-      setTimeout(() => navigate('/dashboard', { replace: true }), 1500)
+      // Sign out everywhere (revokes every refresh token for this user), then sign in manually.
+      await supabase.auth.signOut({ scope: 'global' }).catch(() => supabase?.auth.signOut({ scope: 'local' }))
+      navigate('/signin', { replace: true, state: { notice: 'Password updated. Sign in with your new password.' } })
     } catch (err) {
       setFormError(toAppError(err).message)
     } finally {
@@ -378,7 +384,7 @@ export function ResetPasswordPage() {
     <AuthFrame>
       <h1 className="mb-6 text-2xl font-bold tracking-tight sm:text-3xl">Set a new password</h1>
       <Card>
-        {done ? <Alert tone="success">Password updated. Taking you to your dashboard…</Alert> : (
+        {done ? <Alert tone="success">Password updated. Taking you to sign in…</Alert> : (
           <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
             {formError && <Alert tone="error">{formError}</Alert>}
             <PasswordField label="New password" name="password" autoComplete="new-password" hint="At least 8 characters" error={errors.password} />
