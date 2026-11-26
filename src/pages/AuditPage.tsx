@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router'
+import { useParams } from 'react-router'
+import { DashboardNav } from '../components/DashboardNav'
+import { orgNav } from '../lib/nav'
+import { AdminNav } from './AdminPlatformPages'
 import { getAuditLog } from '../lib/api'
 import { toAppError } from '../lib/errors'
 import { formatDateTime } from '../lib/format'
@@ -15,10 +18,8 @@ export function AuditPage() {
   const q = useQuery({ queryKey: ['audit', orgId ?? 'all'], queryFn: () => getAuditLog(orgId) })
   return (
     <>
-      <PageHeader title="Audit log" subtitle={
-        orgId ? <Link className="text-brand-700 underline" to={`/org/${orgId}`}>Back to organization</Link>
-          : <Link className="text-brand-700 underline" to="/admin">Back to administration</Link>
-      } />
+      <PageHeader title="Audit log" subtitle={orgId ? 'Every change to this organization’s data, with who made it.' : 'Platform-wide change history.'} />
+      {orgId ? <DashboardNav label="Organization dashboard" items={orgNav(orgId, true)} /> : <AdminNav />}
       <p className="mb-4 text-sm text-ink-500">Latest 100 changes. Entries cannot be edited or deleted. "operator" means a change made directly by the platform owner.</p>
       {q.isPending && <LoadingState />}
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}

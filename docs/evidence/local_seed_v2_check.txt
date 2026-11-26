@@ -1,0 +1,31 @@
+PASS  P1    without seed v1 → DEMO_SEED_V2_PREREQUISITES_MISSING, nothing written
+PASS  S0    seed v1 applies
+PASS  S1    seed v2 applies as one transaction
+PASS  S2    creates 3 opportunities, 4 shifts, 7 applications, 3 offers, 1 feedback, 1 complaint, 1 private org row
+PASS  S3    second run is a no-op (identical counts, no duplicates)
+PASS  S4    every v2 opportunity and shift is labelled (Demo v2)
+PASS  S5    real (non-demo) profiles untouched
+PASS  S6    workflow steps were audited with the acting demo user
+PASS  S7    all three compensation types and both selection modes are represented
+PASS  S8    application statuses cover submitted, under review, selected, rejected, withdrawn, declined
+PASS  S9    offer statuses cover accepted, declined, pending
+PASS  S10   constraints hold: no overbooking, accepted offer ↔ signup of same volunteer and shift
+PASS  V1    volunteer1: accepted offer with a confirmed seat
+PASS  V2    load03: pending paid-role offer with a ~72-hour window
+PASS  V3    load02: sees rejection and reason
+PASS  V4    volunteer1 has notifications (review, offer)
+PASS  V5    volunteer1 participation shows submitted feedback
+PASS  O1    coordinator reviews the 5 applicants of organization A, with private notes
+PASS  O2    org admin sees private verification details
+PASS  O3    volunteer cannot read the private notes
+PASS  A1    admin overview counts active applications, open offers and open complaints
+PASS  A2    the organization cannot see the complaint about it
+PASS  U1    public search finds the paid demo role
+PASS  U2    public stats include the new opportunities
+PASS  C1    cleanup runs
+PASS  C2    after cleanup: v2 opportunities closed, shifts cancelled, no pending offers, no open applications or complaints
+PASS  C3    cleanup keeps history (audit, feedback, participation) and v1 data
+PASS  C4    cleanup is re-runnable
+PASS  C5    real (non-demo) profiles still untouched after cleanup
+
+29/29 passed

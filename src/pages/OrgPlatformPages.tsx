@@ -16,7 +16,7 @@ import { useDialog } from '../components/dialog'
 import { DashboardNav } from '../components/DashboardNav'
 import { orgNav } from '../lib/nav'
 import { OrgLogo } from '../components/cards'
-import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge, TextArea, TextField } from '../components/ui'
+import { Alert, Button, Card, Checkbox, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge, TextArea, TextField } from '../components/ui'
 
 const STATUS_FILTERS: { value: '' | ApplicationStatus; label: string }[] = [
   { value: '', label: 'All' }, { value: 'submitted', label: 'New' }, { value: 'under_review', label: 'Under review' },
@@ -31,12 +31,17 @@ export function OrgApplicationsPage() {
   const [params, setParams] = useSearchParams()
   const status = (params.get('status') || undefined) as ApplicationStatus | undefined
   const opportunityId = params.get('opportunity') || undefined
+  const includeClosed = params.get('closed') === '1'
   const qc = useQueryClient()
   const [notice, setNotice] = useState<{ tone: 'success' | 'error' | 'info'; text: string } | null>(null)
   const opps = useQuery({ queryKey: ['org-opps', orgId], queryFn: () => getOrgOpportunities(orgId) })
   const apps = useQuery({ queryKey: ['org-applications', orgId, opportunityId, status], queryFn: () => getOrgApplications(orgId, opportunityId, status) })
   const onDone = (text: string, tone: 'success' | 'info' = 'success') => { setNotice({ tone, text }); void qc.invalidateQueries({ queryKey: ['org-applications', orgId] }) }
   const onError = (e: unknown) => { setNotice({ tone: 'error', text: toAppError(e).message }); void apps.refetch() }
+  const closedIds = new Set((opps.data ?? []).filter((o) => o.status === 'closed').map((o) => o.id))
+  const oppOptions = (opps.data ?? []).filter((o) => includeClosed || o.status !== 'closed' || o.id === opportunityId)
+  const visible = (apps.data ?? []).filter((a) => includeClosed || opportunityId || !closedIds.has(a.opportunity_id))
+  const hiddenClosed = (apps.data?.length ?? 0) - visible.length
 
   return (
     <>
@@ -46,25 +51,30 @@ export function OrgApplicationsPage() {
         <form className="grid gap-3 sm:grid-cols-3" onSubmit={(e) => {
           e.preventDefault(); const f = new FormData(e.currentTarget); const n = new URLSearchParams()
           for (const k of ['opportunity', 'status']) { const v = String(f.get(k) ?? ''); if (v) n.set(k, v) }
+          if (f.get('closed')) n.set('closed', '1')
           setParams(n)
         }}>
           <Select label="Opportunity" name="opportunity" defaultValue={opportunityId ?? ''}
-            options={[{ value: '', label: 'All opportunities' }, ...(opps.data ?? []).map((o) => ({ value: o.id, label: o.title }))]} />
+            options={[{ value: '', label: includeClosed ? 'All opportunities' : 'All active opportunities' }, ...oppOptions.map((o) => ({ value: o.id, label: o.status === 'closed' ? `${o.title} (closed)` : o.title }))]} />
           <Select label="Status" name="status" defaultValue={status ?? ''} options={STATUS_FILTERS} />
-          <div className="flex items-end"><Button type="submit">Filter</Button></div>
+          <div className="flex flex-wrap items-end gap-4">
+            <Checkbox label="Include closed opportunities" name="closed" defaultChecked={includeClosed} />
+            <Button type="submit">Filter</Button>
+          </div>
         </form>
       </Card>
       <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
       {apps.isPending && <LoadingState label="Loading applicants" />}
       {apps.isError && <ErrorState message={toAppError(apps.error).message} onRetry={() => apps.refetch()} />}
-      {apps.data && apps.data.length === 0 && (
+      {apps.data && visible.length === 0 && (
         <EmptyState title="No applications here yet">Publish an opportunity with “Application” selection to receive applicants.</EmptyState>
       )}
-      {apps.data && apps.data.length > 0 && (
+      {apps.data && visible.length > 0 && (
         <ul className="flex flex-col gap-3">
-          {apps.data.map((a) => <ApplicantCard key={a.application_id} a={a} onDone={onDone} onError={onError} />)}
+          {visible.map((a) => <ApplicantCard key={a.application_id} a={a} onDone={onDone} onError={onError} />)}
         </ul>
       )}
+      {hiddenClosed > 0 && <p className="mt-3 text-sm text-ink-500">{hiddenClosed} application{hiddenClosed === 1 ? '' : 's'} for closed opportunities hidden — tick “Include closed opportunities” to see them.</p>}
     </>
   )
 }
