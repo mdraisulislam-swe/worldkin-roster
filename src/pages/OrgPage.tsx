@@ -33,7 +33,16 @@ export function OrgPage() {
   const [oppTab, setOppTab] = useState<'all' | 'published' | 'draft' | 'closed'>('all')
 
   if (org.isPending) return <LoadingState />
-  if (org.isError) return <ErrorState message={toAppError(org.error).message} onRetry={() => org.refetch()} />
+  if (org.isError) {
+    const err = toAppError(org.error)
+    if (err.code === 'NOT_FOUND') return (
+      <>
+        <PageHeader title="Organization not available" />
+        <EmptyState title="This organization can't be shown">It may not exist, or you may not have access to it. <Link className="text-brand-700 underline" to="/orgs">Your organizations</Link></EmptyState>
+      </>
+    )
+    return <ErrorState message={err.message} onRetry={() => org.refetch()} />
+  }
   const o = org.data
   const primaryBtn = 'inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-700 px-4 text-[15px] font-semibold text-white hover:bg-brand-800'
   const secondaryBtn = 'inline-flex min-h-11 items-center gap-2 rounded-lg border border-neutral-100 bg-white px-4 text-[15px] font-semibold text-ink-900 hover:border-brand-600'

@@ -20,7 +20,7 @@ function setAuth(memberships: M[], isPlatformAdmin = false) {
     roleIn: (id: string) => memberships.find((m) => m.org_id === id)?.role ?? null,
   }
 }
-const org = (role: M['role'], status = 'verified'): M => ({ org_id: 'o1', role, organization: { name: 'Sample Org', slug: 'sample-org', status } })
+const org = (role: M['role'], status = 'verified'): M => ({ org_id: '11111111-2222-3333-4444-555555555555', role, organization: { name: 'Sample Org', slug: 'sample-org', status } })
 
 function render(path: string) {
   const qc = new QueryClient()
@@ -59,8 +59,11 @@ describe('VolunteerWorkspace', () => {
     expect(html).toContain('aria-current="page"')
   })
 
-  it('never links to platform administration, even for a platform admin', () => {
+  it('links to the admin console only for platform admins, never in the menu itself', () => {
     setAuth([], true)
+    const html = render('/me')
+    expect(html.split('href="/admin"').length - 1).toBe(1)
+    setAuth([])
     expect(render('/me')).not.toContain('href="/admin')
   })
 
@@ -79,31 +82,31 @@ describe('VolunteerWorkspace', () => {
 describe('OrgWorkspace', () => {
   it('shows admin-only sections to organization admins', () => {
     setAuth([org('org_admin')])
-    const html = render('/org/o1/team')
-    for (const p of ['/org/o1', '/org/o1/applications', '/org/o1/settings', '/org/o1/team', '/org/o1/audit']) expect(html).toContain(`href="${p}"`)
+    const html = render('/org/11111111-2222-3333-4444-555555555555/team')
+    for (const p of ['/org/11111111-2222-3333-4444-555555555555', '/org/11111111-2222-3333-4444-555555555555/applications', '/org/11111111-2222-3333-4444-555555555555/settings', '/org/11111111-2222-3333-4444-555555555555/team', '/org/11111111-2222-3333-4444-555555555555/audit']) expect(html).toContain(`href="${p}"`)
     expect(html).toContain('Sample Org')
     expect(html).toContain('Organization admin')
   })
 
   it('hides admin-only sections from coordinators', () => {
     setAuth([org('coordinator')])
-    const html = render('/org/o1')
-    expect(html).toContain('href="/org/o1/applications"')
-    for (const p of ['/org/o1/settings', '/org/o1/team', '/org/o1/audit']) expect(html).not.toContain(`href="${p}"`)
+    const html = render('/org/11111111-2222-3333-4444-555555555555')
+    expect(html).toContain('href="/org/11111111-2222-3333-4444-555555555555/applications"')
+    for (const p of ['/org/11111111-2222-3333-4444-555555555555/settings', '/org/11111111-2222-3333-4444-555555555555/team', '/org/11111111-2222-3333-4444-555555555555/audit']) expect(html).not.toContain(`href="${p}"`)
   })
 
-  it('never links to platform administration', () => {
-    setAuth([org('org_admin')], true)
-    expect(render('/org/o1')).not.toContain('href="/admin')
+  it('organization admins who are not platform admins never get an admin link', () => {
+    setAuth([org('org_admin')], false)
+    expect(render('/org/11111111-2222-3333-4444-555555555555')).not.toContain('href="/admin')
   })
 
   it('links to the public profile only when the organization is verified', () => {
     setAuth([org('org_admin', 'pending')])
-    const pending = render('/org/o1')
+    const pending = render('/org/11111111-2222-3333-4444-555555555555')
     expect(pending).not.toContain('href="/organizations/sample-org"')
     expect(pending).toContain('Awaiting verification')
     setAuth([org('org_admin', 'verified')])
-    expect(render('/org/o1')).toContain('href="/organizations/sample-org"')
+    expect(render('/org/11111111-2222-3333-4444-555555555555')).toContain('href="/organizations/sample-org"')
   })
 })
 
@@ -138,8 +141,40 @@ describe('workspace app shell', () => {
 
   it('organization shell shows the organization block and the role', () => {
     setAuth([org('coordinator')])
-    const html = render('/org/o1')
+    const html = render('/org/11111111-2222-3333-4444-555555555555')
     expect(html).toContain('Sample Org')
     expect(html).toContain('Coordinator')
+  })
+})
+
+describe('workspace switcher (smoke-test D1)', () => {
+  it('platform admin in the volunteer workspace can open the Admin console', () => {
+    setAuth([], true)
+    const html = render('/me/calendar')
+    expect(html).toContain('Switch to')
+    expect(html).toContain('href="/admin"')
+  })
+  it('ordinary volunteer sees no admin link and no switcher', () => {
+    setAuth([])
+    const html = render('/me/calendar')
+    expect(html).not.toContain('href="/admin"')
+    expect(html).not.toContain('Switch to')
+  })
+  it('organization member in the volunteer workspace can open their organization', () => {
+    setAuth([org('coordinator')])
+    expect(render('/me/calendar')).toContain('Organization workspace')
+  })
+  it('admin console links back to the volunteer workspace', () => {
+    setAuth([], true)
+    expect(render('/admin')).toContain('Volunteer workspace')
+  })
+})
+
+describe('malformed organization id (smoke-test D2)', () => {
+  it('shows Page not found instead of the workspace (no database call)', () => {
+    setAuth([], true)
+    const html = render('/org/not-a-uuid')
+    expect(html).toContain('Page not found')
+    expect(html).not.toContain('Organization dashboard sidebar')
   })
 })

@@ -6,6 +6,8 @@ import { getAdminOverview, getMyApplications, getOrgApplications, getUnreadCount
 import { ADMIN_NAV, VOLUNTEER_NAV, orgNav, type NavItem } from '../../lib/nav'
 import { VOLUNTEER_SHARED_PATHS } from '../../lib/workspace'
 import { Icon } from '../Icon'
+import { isUuid } from '../../lib/ids'
+import { NotFoundPage } from '../../pages/NotFoundPage'
 
 /**
  * Workspace app shell (prototype "shell"): full-height sidebar with logo, an
@@ -54,8 +56,14 @@ function SideLink({ item, dark, onNavigate }: { item: NavItem; dark: boolean; on
 
 function SidebarBody({ kind, label, items, who, orgBlock, onNavigate }: FrameProps & { onNavigate?: () => void }) {
   const dark = kind === 'admin'
-  const { signOut } = useAuth()
+  const { signOut, isPlatformAdmin, memberships } = useAuth()
   const navigate = useNavigate()
+  // Other workspaces this user may open (UX only; every page is still guarded and authorized by the database).
+  const switchTo = [
+    kind !== 'volunteer' && { to: '/me', label: 'Volunteer workspace', icon: 'user' as const },
+    kind !== 'org' && memberships.length > 0 && { to: memberships.length === 1 ? `/org/${memberships[0].org_id}` : '/orgs', label: memberships.length === 1 ? 'Organization workspace' : 'My organizations', icon: 'building' as const },
+    kind !== 'admin' && isPlatformAdmin && { to: '/admin', label: 'Admin console', icon: 'shield-check' as const },
+  ].filter(Boolean) as { to: string; label: string; icon: 'user' | 'building' | 'shield-check' }[]
   const group = `px-2.5 pb-1.5 pt-3.5 text-[11px] font-semibold uppercase tracking-[0.1em] ${dark ? 'text-[#7fa59a]' : 'text-ink-500'}`
   return (
     <div className="flex h-full flex-col gap-1 px-3.5 py-5">
@@ -65,6 +73,20 @@ function SidebarBody({ kind, label, items, who, orgBlock, onNavigate }: FramePro
       <nav aria-label={label}>
         <ul className="flex flex-col gap-0.5">{items.map((i) => <li key={i.to}><SideLink item={i} dark={dark} onNavigate={onNavigate} /></li>)}</ul>
       </nav>
+      {switchTo.length > 0 && (
+        <>
+          <p className={group}>Switch to</p>
+          <ul className="flex flex-col gap-0.5">
+            {switchTo.map((w) => (
+              <li key={w.to}>
+                <Link to={w.to} onClick={onNavigate} className={`flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 text-[14.5px] font-medium ${dark ? 'text-[#d4e6df] hover:bg-white/6' : 'text-ink-700 hover:bg-neutral-100'}`}>
+                  <Icon name={w.icon} size={18} />{w.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <div className={`mt-auto border-t pt-3 ${dark ? 'border-white/10' : 'border-neutral-100'}`}>
         <div className="flex items-center gap-3 p-2">
           <span aria-hidden className={`grid h-9 w-9 shrink-0 place-items-center rounded-full font-display text-sm font-bold ${dark ? 'bg-white/12 text-white' : 'bg-brand-50 text-brand-700'}`}>{initials(who.name)}</span>
@@ -200,6 +222,7 @@ const STATUS_CHIP: Record<string, { text: string; cls: string }> = {
 export function OrgWorkspace() {
   const { orgId = '' } = useParams()
   const { profile, memberships, roleIn } = useAuth()
+  const validId = isUuid(orgId)
   const m = memberships.find((x) => x.org_id === orgId)
   const role = roleIn(orgId)
   // Same rule the pages used before: admin links for organization admins only.
@@ -207,7 +230,7 @@ export function OrgWorkspace() {
   const org = m?.organization
   const status = org ? STATUS_CHIP[org.status] : undefined
   // Same key as the organization overview: shared cache.
-  const submitted = useQuery({ queryKey: ['org-app-count', orgId, 'submitted'], queryFn: () => getOrgApplications(orgId, undefined, 'submitted'), enabled: !!role })
+  const submitted = useQuery({ queryKey: ['org-app-count', orgId, 'submitted'], queryFn: () => getOrgApplications(orgId, undefined, 'submitted'), enabled: !!role && validId })
   const items = orgNav(orgId, isAdmin).map((i) => (i.to === `/org/${orgId}/applications` ? { ...i, badge: submitted.data?.length ?? 0 } : i))
   const orgName = org?.name ?? 'Organization'
   const orgBlock = (
@@ -224,6 +247,7 @@ export function OrgWorkspace() {
       </div>
     </>
   )
+  if (!validId) return <NotFoundPage />
   return <WorkspaceFrame kind="org" label="Organization dashboard" items={items} orgBlock={orgBlock}
     who={{ name: profile?.full_name || 'Staff member', role: role ? ROLE_LABEL[role] : 'Platform admin' }} />
 }

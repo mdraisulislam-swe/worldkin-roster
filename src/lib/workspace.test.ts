@@ -16,20 +16,20 @@ describe('workspaceChrome', () => {
   })
   it('keeps the existing rule for profile and complaints', () => {
     expect(c({ pathname: '/me/profile' })).toBe('volunteer')
-    expect(c({ pathname: '/me/profile', memberOrgIds: ['o1'] })).toBe('public')
-    expect(c({ pathname: '/me/complaints', memberOrgIds: ['o1'] })).toBe('public')
+    expect(c({ pathname: '/me/profile', memberOrgIds: ['11111111-2222-3333-4444-555555555555'] })).toBe('public')
+    expect(c({ pathname: '/me/complaints', memberOrgIds: ['11111111-2222-3333-4444-555555555555'] })).toBe('public')
   })
   it('organization shell only for members of that organization (or platform admins)', () => {
-    expect(c({ pathname: '/org/o1', memberOrgIds: ['o1'] })).toBe('org')
-    expect(c({ pathname: '/org/o1/settings', memberOrgIds: ['o1'] })).toBe('org')
-    expect(c({ pathname: '/org/o2', memberOrgIds: ['o1'] })).toBe('public')
-    expect(c({ pathname: '/org/o2', isPlatformAdmin: true })).toBe('org')
+    expect(c({ pathname: '/org/11111111-2222-3333-4444-555555555555', memberOrgIds: ['11111111-2222-3333-4444-555555555555'] })).toBe('org')
+    expect(c({ pathname: '/org/11111111-2222-3333-4444-555555555555/settings', memberOrgIds: ['11111111-2222-3333-4444-555555555555'] })).toBe('org')
+    expect(c({ pathname: '/org/99999999-8888-7777-6666-555555555555', memberOrgIds: ['11111111-2222-3333-4444-555555555555'] })).toBe('public')
+    expect(c({ pathname: '/org/99999999-8888-7777-6666-555555555555', isPlatformAdmin: true })).toBe('org')
   })
   it('admin shell only for platform admins; others keep public chrome around "No access"', () => {
     expect(c({ pathname: '/admin', isPlatformAdmin: true })).toBe('admin')
     expect(c({ pathname: '/admin/users', isPlatformAdmin: true })).toBe('admin')
     expect(c({ pathname: '/admin' })).toBe('public')
-    expect(c({ pathname: '/admin/audit', memberOrgIds: ['o1'] })).toBe('public')
+    expect(c({ pathname: '/admin/audit', memberOrgIds: ['11111111-2222-3333-4444-555555555555'] })).toBe('public')
   })
   it('signed out: public chrome while the guard redirects to sign-in', () => {
     expect(c({ pathname: '/me', signedIn: false })).toBe('public')
@@ -41,5 +41,11 @@ describe('workspaceChrome', () => {
   })
   it('lookalike paths are not workspaces', () => {
     for (const pathname of ['/metrics', '/organization', '/administrator', '/orgs/x']) expect(c({ pathname })).toBe('public')
+  })
+})
+
+describe('malformed organization ids (smoke-test D2)', () => {
+  it('keep the public chrome, even for platform admins', () => {
+    expect(workspaceChrome({ ...base, pathname: '/org/not-a-uuid/team', isPlatformAdmin: true })).toBe('public')
   })
 })

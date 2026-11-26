@@ -9,6 +9,8 @@
  * ordinary users and a denied page still has a way back. UX only: every page
  * is authorized again by the database.
  */
+import { isUuid } from './ids'
+
 export type Chrome = 'public' | 'pending' | 'volunteer' | 'org' | 'admin'
 
 export type ChromeInput = {
@@ -31,7 +33,7 @@ export function workspaceChrome({ pathname, loading, signedIn, isPlatformAdmin, 
   if (loading) return 'pending'
   if (!signedIn) return 'public'
   if (isAdmin) return isPlatformAdmin ? 'admin' : 'public'
-  if (orgMatch) return memberOrgIds.includes(orgMatch[1]) || isPlatformAdmin ? 'org' : 'public'
+  if (orgMatch) return isUuid(orgMatch[1]) && (memberOrgIds.includes(orgMatch[1]) || isPlatformAdmin) ? 'org' : 'public'
   if (VOLUNTEER_SHARED_PATHS.includes(path) && memberOrgIds.length > 0) return 'public'
   return 'volunteer'
 }
