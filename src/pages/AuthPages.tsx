@@ -21,6 +21,7 @@ function ResendConfirmation({ defaultEmail = '' }: { defaultEmail?: string }) {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (busy) return
     const email = String(new FormData(e.currentTarget).get('resendEmail') ?? '').trim()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError('Enter a valid email address')
     setError(null); setBusy(true)
@@ -60,6 +61,7 @@ export function SignInPage() {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (busy) return
     const parsed = signInSchema.safeParse(Object.fromEntries(new FormData(e.currentTarget)))
     if (!parsed.success) return setErrors(fieldErrors(parsed.error))
     setErrors({}); setFormError(null); setBusy(true)
@@ -115,6 +117,7 @@ export function SignUpPage() {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (busy) return
     const parsed = signUpSchema.safeParse(Object.fromEntries(new FormData(e.currentTarget)))
     if (!parsed.success) return setErrors(fieldErrors(parsed.error))
     setErrors({}); setFormError(null); setBusy(true)
@@ -127,7 +130,14 @@ export function SignUpPage() {
         navigate('/verify-email', { state: pending })
       }
     } catch (err) {
-      setFormError(toAppError(err).message)
+      const e2 = toAppError(err)
+      if (e2.code === 'EMAIL_DELIVERY') {
+        const pending = { email: parsed.data.email, name: parsed.data.fullName, next, sentAt: 0 }
+        savePendingSignup(pending)
+        navigate('/verify-email', { state: { ...pending, deliveryFailed: true } })
+        return
+      }
+      setFormError(e2.message)
     } finally {
       setBusy(false)
     }
@@ -259,6 +269,7 @@ export function ForgotPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (busy) return
     const email = String(new FormData(e.currentTarget).get('email') ?? '').trim()
     if (!EMAIL_RE.test(email)) return setError('Enter a valid email address')
     if (!supabase) return setError('The app is not configured.')
@@ -305,6 +316,7 @@ export function ResetPasswordPage() {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (busy) return
     const f = new FormData(e.currentTarget)
     const password = String(f.get('password') ?? '')
     const confirm = String(f.get('confirm') ?? '')
@@ -372,7 +384,7 @@ export function VerifyEmailPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const now = useNow(1000)
-  const fromState = (location.state ?? null) as { email?: string; name?: string; next?: string; sentAt?: number } | null
+  const fromState = (location.state ?? null) as { email?: string; name?: string; next?: string; sentAt?: number; deliveryFailed?: boolean } | null
   const [pending, setPending] = useState(() => (fromState?.email
     ? { email: fromState.email, name: fromState.name, next: safeNext(fromState.next ?? null, '/dashboard'), sentAt: fromState.sentAt ?? 0 }
     : readPendingSignup()))
@@ -380,7 +392,9 @@ export function VerifyEmailPage() {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
-  const [notice, setNotice] = useState<{ tone: 'error' | 'success' | 'info'; text: string } | null>(null)
+  const [notice, setNotice] = useState<{ tone: 'error' | 'success' | 'info'; text: string } | null>(() => (fromState?.deliveryFailed
+    ? { tone: 'error', text: 'Your account request was received, but the verification email could not be sent right now. Press "Resend code" in a few minutes.' }
+    : null))
   const wait = cooldownLeft(pending?.sentAt || null, now)
   const next = safeNext(pending?.next ?? null, '/dashboard')
 

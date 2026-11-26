@@ -5,6 +5,7 @@ import { DialogProvider } from '../components/dialog'
 import { envResult } from '../lib/env'
 import { ConfigErrorPage } from '../pages/ConfigErrorPage'
 import { router } from './router'
+import { AppErrorBoundary } from '../components/ErrorBoundary'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,6 +22,7 @@ const queryClient = new QueryClient({
 export function App() {
   if (!envResult.ok) return <ConfigErrorPage problems={envResult.problems} />
   return (
+    <AppErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <DialogProvider>
@@ -28,5 +30,6 @@ export function App() {
         </DialogProvider>
       </AuthProvider>
     </QueryClientProvider>
+    </AppErrorBoundary>
   )
 }

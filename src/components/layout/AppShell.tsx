@@ -18,6 +18,12 @@ export function AppShell() {
   // Unread count: small HEAD count query, refreshed every minute and on navigation.
   const unreadQ = useQuery({ queryKey: ['unread', uid, pathname], queryFn: () => getUnreadCount(uid!), enabled: !!uid, refetchInterval: 60_000, staleTime: 15_000 })
   const unread = unreadQ.data ?? 0
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
+  useEffect(() => {
+    const up = () => setOnline(true), down = () => setOnline(false)
+    window.addEventListener('online', up); window.addEventListener('offline', down)
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
+  }, [])
   const mainRef = useRef<HTMLElement>(null)
   const firstRender = useRef(true)
   // After client-side navigation, move focus to the new page content so keyboard
@@ -119,6 +125,11 @@ export function AppShell() {
           </nav>
         )}
       </header>
+      {!online && (
+        <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">
+          You are offline. You can keep browsing what is loaded; changes will need a connection. The page updates automatically when you are back online.
+        </div>
+      )}
       <main id="main" ref={mainRef} tabIndex={-1} className="outline-none mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
         <Suspense fallback={<LoadingState />}>
           <Outlet />

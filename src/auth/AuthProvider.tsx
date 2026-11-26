@@ -61,12 +61,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!supabase) return
     let active = true
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!active) return
-      setSession(data.session)
-      await loadUserData(data.session).catch(() => undefined)
-      if (active) setLoading(false)
-    })
+    supabase.auth.getSession()
+      .then(async ({ data }) => {
+        if (!active) return
+        setSession(data.session)
+        await loadUserData(data.session).catch(() => undefined)
+      })
+      // An unreachable Auth service must never leave the app stuck on "Checking your session".
+      .catch(() => { if (active) setSession(null) })
+      .finally(() => { if (active) setLoading(false) })
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s)
       // Defer DB calls out of the auth callback (recommended by supabase-js).

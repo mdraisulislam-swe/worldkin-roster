@@ -82,25 +82,36 @@ export class AppError extends Error {
   }
 }
 
-type Raw = { message?: unknown; code?: unknown; name?: unknown } | null | undefined
+type Raw = { message?: unknown; code?: unknown; name?: unknown; status?: unknown } | null | undefined
 
 export function toAppError(err: unknown): AppError {
   if (err instanceof AppError) return err
   const raw = err as Raw
   const message = typeof raw?.message === 'string' ? raw.message : ''
   const code = typeof raw?.code === 'string' ? raw.code : undefined
+  const status = typeof raw?.status === 'number' ? raw.status : undefined
+  const name = typeof raw?.name === 'string' ? raw.name : ''
 
   const wk = message.match(/\bWK_[A-Z_]+\b/)?.[0]
   if (wk) return new AppError(WK_MESSAGES[wk] ?? 'The request was rejected.', wk)
   if (code && SQLSTATE_MESSAGES[code]) return new AppError(SQLSTATE_MESSAGES[code], code)
+  if (name === 'TimeoutError' || name === 'AbortError' || /did not respond within|timed? ?out/i.test(message)) {
+    return new AppError('The service is taking too long to respond. Check your connection and try again in a moment.', 'TIMEOUT', true)
+  }
+  if (status === 429 || /rate limit|too many requests/i.test(message) || code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit') {
+    return new AppError('Too many attempts. Please wait a few minutes and try again.', 'AUTH_RATE_LIMIT', true)
+  }
+  if (/error sending .*email|smtp|email.*(could not|failed).*send/i.test(message)) {
+    return new AppError('We could not send the email right now. Please use "Resend" in a few minutes; if it keeps failing, try again later.', 'EMAIL_DELIVERY', true)
+  }
   if (err instanceof TypeError || /fetch|network|failed to fetch/i.test(message)) {
     return new AppError('Network problem. Check your connection and try again.', 'NETWORK', true)
   }
   if (/invalid login credentials/i.test(message)) return new AppError('Email or password is incorrect.', 'AUTH_INVALID')
   if (/email not confirmed/i.test(message) || code === 'email_not_confirmed') return new AppError('Please verify your email address first. Enter the code we emailed you, or request a new one below.', 'AUTH_UNCONFIRMED')
   if (code === 'otp_expired' || /token has expired or is invalid|otp.*(expired|invalid)/i.test(message)) return new AppError('That code is incorrect or has expired. Check the newest email, or request a new code.', 'AUTH_OTP_INVALID')
-  if (/rate limit|over_email_send_rate_limit/i.test(message) || code === 'over_email_send_rate_limit') return new AppError('Too many emails were requested. Please wait a few minutes and try again.', 'AUTH_RATE_LIMIT', true)
   if (/user already registered/i.test(message) || code === 'user_already_exists') return new AppError('An account with this email may already exist. Try signing in instead.', 'AUTH_EXISTS')
+  if (status !== undefined && status >= 500) return new AppError('The service is temporarily unavailable. Please try again in a few minutes.', 'SERVICE_UNAVAILABLE', true)
   return new AppError(message || 'Something went wrong. Please try again.', code, true)
 }
 

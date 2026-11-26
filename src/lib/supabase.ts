@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
 import { envResult } from './env'
+import { makeTimeoutFetch } from './net'
 
 /**
  * Single browser client. Uses ONLY the publishable key; every permission is
@@ -10,6 +11,8 @@ import { envResult } from './env'
 export const supabase: SupabaseClient<Database> | null = envResult.ok
   ? createClient<Database>(envResult.env.VITE_SUPABASE_URL, envResult.env.VITE_SUPABASE_PUBLISHABLE_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      // Every Auth / Data API / Storage request gets a timeout (no automatic retries).
+      global: { fetch: makeTimeoutFetch(fetch.bind(globalThis)) },
     })
   : null
 
