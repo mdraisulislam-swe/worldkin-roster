@@ -89,7 +89,7 @@ export async function getMyRecord(userId: string) {
   return unwrap(
     await db()
       .from('participation_records')
-      .select('id, hours, verified_at, note, organizations(name), shifts(starts_at, ends_at, opportunities(title, cause))')
+      .select('id, hours, verified_at, note, organizations(name), shifts(starts_at, ends_at, opportunities(title, cause, compensation_type))')
       .eq('volunteer_id', userId)
       .order('verified_at', { ascending: false }),
   )

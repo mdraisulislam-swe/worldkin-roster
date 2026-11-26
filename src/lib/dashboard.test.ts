@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dashboardPath, firstName, groupByDay, profileCompletion, summarizeApplications } from './dashboard'
+import { dashboardPath, firstName, groupByDay, profileCompletion, summarizeApplications, summarizeExperience } from './dashboard'
 import type { MyApplication } from './platform'
 
 const app = (over: Partial<MyApplication>): MyApplication => ({
@@ -56,4 +56,20 @@ describe('agenda grouping', () => {
     expect(groups.map((g) => g.label.startsWith('Today') || g.label.startsWith('Tomorrow') ? g.label : 'other')).toEqual(['Today', 'Tomorrow', 'other'])
     expect(groups[0].items.map((x) => new Date(x.at).getHours())).toEqual([12, 18])
   })
+})
+
+describe('experience passport summary', () => {
+  it('groups verified records per organization and opportunity without double counting', () => {
+    const row = (id: string, org: string, title: string, at: string, hours: number) =>
+      ({ id, hours, verified_at: at, organizations: { name: org }, shifts: { starts_at: at, opportunities: { title, compensation_type: 'voluntary' } } })
+    const s = summarizeExperience([
+      row('1', 'Dhaka Food', 'Parcel packing', '2026-11-01T09:00:00Z', 3),
+      row('2', 'Dhaka Food', 'Parcel packing', '2026-11-08T09:00:00Z', 2.5),
+      row('3', 'Green Delta', 'Mangrove planting', '2026-10-20T09:00:00Z', 4),
+    ])
+    expect(s).toHaveLength(2)
+    expect(s[0]).toMatchObject({ org: 'Dhaka Food', sessions: 2, hours: 5.5, first: '2026-11-01T09:00:00Z', last: '2026-11-08T09:00:00Z' })
+    expect(s[1]).toMatchObject({ org: 'Green Delta', sessions: 1, hours: 4 })
+  })
+  it('is empty when there are no verified records', () => expect(summarizeExperience([])).toEqual([]))
 })

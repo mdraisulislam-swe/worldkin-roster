@@ -7,6 +7,10 @@ import { CAUSE_LABELS, formatDateTime } from '../lib/format'
 import { Button, EmptyState, ErrorState, LoadingState } from '../components/ui'
 import { VolunteerNav } from '../components/DashboardNav'
 import { ParticipationSection } from './VolunteerPages'
+import { summarizeExperience, type RecordRow } from '../lib/dashboard'
+import { COMPENSATION_LABELS, type CompensationType } from '../lib/platform'
+
+const dateOnly = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 
 /**
  * Printable "verified volunteer record": every entry was verified by
@@ -22,6 +26,9 @@ export function RecordPage() {
   if (records.isPending || impact.isPending) return <LoadingState label="Loading your record" />
   if (records.isError) return <ErrorState message={toAppError(records.error).message} onRetry={() => records.refetch()} />
   const rows = records.data ?? []
+  const experience = summarizeExperience(rows as unknown as RecordRow[])
+  const p = profile as (typeof profile & { skills?: string[]; languages?: string[] }) | null
+  const declared = [...(p?.skills ?? []), ...(p?.languages ?? [])]
 
   return (
     <>
@@ -29,7 +36,7 @@ export function RecordPage() {
     <article className="mx-auto max-w-3xl rounded-lg border border-black/10 bg-white p-6 print:border-0 print:p-0">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-brand-700">Worldkin Roster · Verified volunteer record</p>
+          <p className="text-xs uppercase tracking-wide text-brand-700">Worldkin Roster · Verified experience passport</p>
           <h1 className="mt-1 text-2xl font-semibold">{profile?.full_name}</h1>
           <p className="text-sm text-ink-500">Generated {formatDateTime(new Date(now).toISOString())}</p>
         </div>
@@ -44,6 +51,40 @@ export function RecordPage() {
           <div className="rounded-md bg-brand-50 p-3"><dt className="text-xs text-ink-500">Organizations</dt><dd className="text-xl font-semibold">{impact.data.organizations_helped}</dd></div>
         </dl>
       )}
+      {experience.length > 0 && (
+        <section aria-labelledby="exp-h" className="mb-8">
+          <h2 id="exp-h" className="mb-3 text-lg font-semibold">Experience</h2>
+          <ul className="flex flex-col gap-3">
+            {experience.map((e) => (
+              <li key={e.org + e.title} className="rounded-md border border-black/10 p-4 print:break-inside-avoid">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-ink-900">{e.title}</p>
+                    <p className="text-sm text-ink-700">{e.org} <span className="text-xs text-emerald-800">· organization-verified</span></p>
+                  </div>
+                  <p className="text-right text-sm"><span className="text-lg font-semibold text-ink-900">{e.hours}</span> verified h</p>
+                </div>
+                <p className="mt-2 text-xs text-ink-500">
+                  {e.compensation ? COMPENSATION_LABELS[e.compensation as CompensationType] ?? e.compensation : 'Type not listed'}
+                  {e.cause ? ` · ${CAUSE_LABELS[e.cause as keyof typeof CAUSE_LABELS] ?? e.cause}` : ''}
+                  {' · '}{dateOnly.format(new Date(e.first))}{e.first.slice(0, 10) !== e.last.slice(0, 10) ? ` – ${dateOnly.format(new Date(e.last))}` : ''}
+                  {' · '}{e.sessions} verified session{e.sessions === 1 ? '' : 's'}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {declared.length > 0 && (
+        <section aria-labelledby="skills-h" className="mb-8">
+          <h2 id="skills-h" className="text-lg font-semibold">Skills &amp; languages</h2>
+          <p className="mb-2 text-xs text-ink-500">Self-declared on the volunteer's profile — not verified by organizations.</p>
+          <ul className="flex flex-wrap gap-2">
+            {declared.map((d, i) => <li key={d + i} className="rounded-full border border-black/15 px-3 py-1 text-sm">{d}</li>)}
+          </ul>
+        </section>
+      )}
+      <h2 className="mb-2 text-lg font-semibold">Verified sessions</h2>
       {rows.length === 0 ? (
         <EmptyState title="No verified hours yet">Hours appear here after an organization confirms your attendance.</EmptyState>
       ) : (

@@ -72,3 +72,33 @@ export function groupByDay<T>(items: T[], dateOf: (t: T) => string, now: number)
   }
   return groups
 }
+
+export type RecordRow = {
+  id: string; hours: number | string; verified_at: string
+  organizations: { name: string } | null
+  shifts: { starts_at: string; ends_at?: string; opportunities: { title: string; cause?: string; compensation_type?: string } | null } | null
+}
+
+/**
+ * One line per (organization, opportunity) from organization-verified participation
+ * records only: first/last date, number of verified sessions and total verified hours.
+ */
+export function summarizeExperience(rows: RecordRow[]) {
+  const map = new Map<string, { org: string; title: string; cause?: string; compensation?: string; first: string; last: string; sessions: number; hours: number }>()
+  for (const r of rows) {
+    const org = r.organizations?.name ?? 'Organization'
+    const title = r.shifts?.opportunities?.title ?? 'Opportunity (no longer listed)'
+    const when = r.shifts?.starts_at ?? r.verified_at
+    const key = org + '\u0000' + title
+    const e = map.get(key)
+    if (!e) {
+      map.set(key, { org, title, cause: r.shifts?.opportunities?.cause, compensation: r.shifts?.opportunities?.compensation_type, first: when, last: when, sessions: 1, hours: Number(r.hours) })
+    } else {
+      e.sessions += 1
+      e.hours += Number(r.hours)
+      if (when < e.first) e.first = when
+      if (when > e.last) e.last = when
+    }
+  }
+  return [...map.values()].sort((a, b) => (a.last < b.last ? 1 : -1)).map((e) => ({ ...e, hours: Math.round(e.hours * 100) / 100 }))
+}
