@@ -136,14 +136,29 @@ export function AppShell() {
         </Suspense>
       </main>
       <footer className="border-t border-black/10 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-ink-500 sm:px-6">
-          <span>Worldkin Roster · Everyone is kin.</span>
-          <nav aria-label="Footer" className="flex flex-wrap gap-4">
-            <Link className="hover:underline" to="/explore">Opportunities</Link>
-            <Link className="hover:underline" to="/organizations">Organizations</Link>
-            <Link className="hover:underline" to="/join">Join</Link>
-            <Link className="hover:underline" to="/me/complaints">Report a concern</Link>
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 text-sm sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+          <div>
+            <p className="flex items-center gap-2 font-semibold text-ink-900"><img src="/favicon.svg" alt="" width={20} height={20} />Worldkin Roster</p>
+            <p className="mt-2 text-ink-500">Everyone is kin. Discover opportunities with verified organizations and build a record of experience they confirm.</p>
+          </div>
+          <nav aria-label="Discover" className="flex flex-col gap-2">
+            <p className="font-semibold text-ink-900">Discover</p>
+            <Link className="text-ink-700 hover:underline" to="/explore">Explore opportunities</Link>
+            <Link className="text-ink-700 hover:underline" to="/organizations">Verified organizations</Link>
           </nav>
+          <nav aria-label="Get started" className="flex flex-col gap-2">
+            <p className="font-semibold text-ink-900">Get started</p>
+            <Link className="text-ink-700 hover:underline" to="/signup?as=volunteer">Join as a volunteer</Link>
+            <Link className="text-ink-700 hover:underline" to="/signup?as=organization">Register an organization</Link>
+          </nav>
+          <nav aria-label="Trust and safety" className="flex flex-col gap-2">
+            <p className="font-semibold text-ink-900">Trust &amp; safety</p>
+            <span className="text-ink-500">Organizations are reviewed before they can publish. Hours are confirmed by organization staff.</span>
+            <Link className="text-ink-700 hover:underline" to="/me/complaints">Report a concern</Link>
+          </nav>
+        </div>
+        <div className="border-t border-black/5">
+          <p className="mx-auto max-w-6xl px-4 py-4 text-xs text-ink-500 sm:px-6">Worldkin Roster · HACK THE VIBE 2026 · World Problem Solver track</p>
         </div>
       </footer>
     </div>

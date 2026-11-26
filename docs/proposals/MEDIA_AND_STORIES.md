@@ -13,9 +13,9 @@ There is no table for captions, events, consent or moderation status. A `/media`
 ## Proposed migration `wk08_org_media` (additive)
 
 ```sql
--- Bucket: public read, but objects are only listed through approved rows (below).
+-- Bucket: PRIVATE. Images are served only through short-lived signed URLs.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('org-media', 'org-media', true, 3145728, array['image/jpeg','image/png','image/webp']);
+values ('org-media', 'org-media', false, 3145728, array['image/jpeg','image/png','image/webp']);
 
 create type public.media_status as enum ('pending', 'published', 'hidden');
 
@@ -52,11 +52,28 @@ create policy org_media_update on public.org_media for update to authenticated
 create policy org_media_delete on public.org_media for delete to authenticated
   using (public.is_org_admin(org_id) or public.is_platform_admin());
 
--- Storage: write only inside your organization's folder (org admins); read is public by URL.
+-- Safe folder helper (same pattern as wk07's storage_folder_writable): text in, no cast errors.
+create or replace function public.storage_org_media_role(p_folder text, p_admin_only boolean)
+returns boolean language sql stable security invoker set search_path = '' as $$
+  -- CASE (unlike AND) guarantees the regex is checked before the cast.
+  select case when p_folder ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+              then (case when p_admin_only then public.is_org_admin(p_folder::uuid) else public.is_org_member(p_folder::uuid) end)
+              else false end
+$$;
+
+-- Storage read (needed to create a signed URL): published + verified org for everyone;
+-- own organization's items (any status) for its staff; everything for platform admins.
+create policy org_media_obj_select on storage.objects for select to anon, authenticated
+  using (bucket_id = 'org-media' and (
+    exists (select 1 from public.org_media m join public.organizations o on o.id = m.org_id
+            where m.storage_path = name and m.status = 'published' and o.status = 'verified')
+    or public.storage_org_media_role((storage.foldername(name))[1], false)
+    or public.is_platform_admin()));
+-- Storage write: only inside your organization's folder (org admins).
 create policy org_media_obj_insert on storage.objects for insert to authenticated
-  with check (bucket_id = 'org-media' and public.is_org_admin(((storage.foldername(name))[1])::uuid));
+  with check (bucket_id = 'org-media' and public.storage_org_media_role((storage.foldername(name))[1], true));
 create policy org_media_obj_delete on storage.objects for delete to authenticated
-  using (bucket_id = 'org-media' and (public.is_org_admin(((storage.foldername(name))[1])::uuid) or public.is_platform_admin()));
+  using (bucket_id = 'org-media' and (public.storage_org_media_role((storage.foldername(name))[1], true) or public.is_platform_admin()));
 ```
 
 **Publishing:**
@@ -66,7 +83,8 @@ create policy org_media_obj_delete on storage.objects for delete to authenticate
 
 ## Security implications
 
-- **Public bucket.** Anyone holding the exact URL of a pending or hidden image can view it. Paths are random UUIDs and are never listed for anonymous users, but this is not access control. If that is unacceptable, use a private bucket with signed URLs (more work).
+- **Private bucket and signed URLs.** A pending or hidden image cannot be fetched by anyone outside the organization, even with its path. Signed URLs expire after 10 minutes and are created per view. Hiding an item stops new links at once; links already issued expire within 10 minutes.
+- **Org deletion cascade** removes rows. Storage objects are removed by the rollback or cleanup script, so no orphan stays public (the bucket is private anyway).
 - **Data minimisation.** No volunteer personal data is stored: captions are free text, and the upload form warns not to include names without consent.
 - **EXIF.** Location metadata in photos must be stripped before upload (client-side canvas re-encode). This is listed as a requirement in the UI work.
 - **Coordinators.** Coordinators get read-only access, matching the existing team and settings model.
@@ -80,12 +98,24 @@ create policy org_media_obj_delete on storage.objects for delete to authenticate
 5. Publishing without `consent_confirmed` fails the CHECK.
 6. Wrong MIME type or a file over 3 MB is rejected by the bucket.
 7. Platform admin publish and hide is audited.
+8. Existing `avatars` and `org-docs` behaviour is unchanged: re-run `storage_check.mjs` (30/30) and the live storage checks S1–S15.
+9. Anonymous users can create a signed URL for a published item, and are refused for pending items.
+
+## Production impact assessment
+
+- **Purely additive:** 1 enum, 1 table, 1 private bucket, 3 storage policies and 4 table policies. No existing table, policy, function or bucket is changed.
+- **No effect on the Production frontend (`e616aad`):** it never queries the new objects.
+- **Shared project:** Preview and Production share it, so after apply the feature works on Preview only, until merge.
+- **Cast errors:** folder names are checked with a regex before any UUID cast (`storage_org_media_role`). A malformed path therefore returns *false* instead of raising, whatever order Postgres evaluates the conditions in.
+- **Backup:** use the owner's existing `pg_dump`. Apply only after the local PGlite and storage tests pass.
 
 ## Rollback (`rollback_wk08.sql`)
 
 ```sql
+drop policy if exists org_media_obj_select on storage.objects;
 drop policy if exists org_media_obj_insert on storage.objects;
 drop policy if exists org_media_obj_delete on storage.objects;
+drop function if exists public.storage_org_media_role(text, boolean);
 drop table if exists public.org_media;
 drop type if exists public.media_status;
 delete from storage.objects where bucket_id = 'org-media';
