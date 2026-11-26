@@ -10,7 +10,6 @@ import { toAppError } from '../lib/errors'
 import { CAUSE_LABELS, formatDateTime, formatShiftWindow } from '../lib/format'
 import { useNow } from '../lib/useNow'
 import { useDialog } from '../components/dialog'
-import { VolunteerNav } from '../components/DashboardNav'
 import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge, TextArea, TextField } from '../components/ui'
 
 function hoursLeft(iso: string, now: number) {
@@ -47,7 +46,6 @@ export function MyApplicationsPage() {
   return (
     <>
       <PageHeader title="Applications & offers" subtitle="Track your applications and respond to offers before they expire (72 hours)." />
-      <VolunteerNav />
       <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
       {q.isPending && <LoadingState label="Loading applications" />}
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}
@@ -146,7 +144,6 @@ export function NotificationsPage() {
     <>
       <PageHeader title="Notifications" subtitle="Decisions, offers, promotions and verified hours."
         actions={unread > 0 ? <Button variant="secondary" busy={markAll.isPending} onClick={() => markAll.mutate()}>Mark all as read</Button> : undefined} />
-      <VolunteerNav />
       <div aria-live="polite">{markError && <div className="mb-4"><Alert tone="error">{markError}</Alert></div>}</div>
       {q.isPending && <LoadingState />}
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}
@@ -173,7 +170,7 @@ export function NotificationsPage() {
 
 // ------------------------------------------------------------------ complaints (volunteers and organization staff)
 export function ComplaintsPage() {
-  const { session, memberships } = useAuth()
+  const { session } = useAuth()
   const uid = session!.user.id
   const [params] = useSearchParams()
   const qc = useQueryClient()
@@ -198,7 +195,6 @@ export function ComplaintsPage() {
   return (
     <>
       <PageHeader title="Private complaints" subtitle="Report a safety, conduct or integrity concern. Only Worldkin administrators can read it — never the organization." />
-      {memberships.length === 0 && <VolunteerNav />}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <h2 className="mb-3 font-semibold">New complaint</h2>

@@ -9,7 +9,6 @@ import { downloadIcs } from '../lib/calendar'
 import { toAppError } from '../lib/errors'
 import { useNow } from '../lib/useNow'
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, StatusBadge } from '../components/ui'
-import { VolunteerNav } from '../components/DashboardNav'
 import { MonthCalendar } from '../components/MonthCalendar'
 
 type Item = { id: string; at: string; end?: string; kind: CalendarMark; title: string; sub: string; to: string; status?: string }
@@ -55,7 +54,6 @@ export function CalendarPage() {
   return (
     <>
       <PageHeader title="My calendar" subtitle="Your confirmed and waitlisted shifts, past participation and offer deadlines." />
-      <VolunteerNav />
       {(signups.isPending || apps.isPending) && <LoadingState label="Loading your calendar" />}
       {signups.isError && <ErrorState message={toAppError(signups.error).message} onRetry={() => signups.refetch()} />}
       {signups.data && (

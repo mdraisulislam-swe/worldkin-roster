@@ -13,8 +13,6 @@ import { formatDateTime, formatShiftWindow } from '../lib/format'
 import { organizationDetailsSchema, fieldErrors } from '../lib/validation'
 import { useNow } from '../lib/useNow'
 import { useDialog } from '../components/dialog'
-import { DashboardNav } from '../components/DashboardNav'
-import { orgNav } from '../lib/nav'
 import { OrgLogo } from '../components/cards'
 import { Alert, Button, Card, Checkbox, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge, TextArea, TextField } from '../components/ui'
 
@@ -27,7 +25,6 @@ const STATUS_FILTERS: { value: '' | ApplicationStatus; label: string }[] = [
 /** Applicant review, selection and offers (organization staff). */
 export function OrgApplicationsPage() {
   const { orgId = '' } = useParams()
-  const { roleIn } = useAuth()
   const [params, setParams] = useSearchParams()
   const status = (params.get('status') || undefined) as ApplicationStatus | undefined
   const opportunityId = params.get('opportunity') || undefined
@@ -46,7 +43,6 @@ export function OrgApplicationsPage() {
   return (
     <>
       <PageHeader title="Applicants & offers" subtitle="Review applicants, select or reject, and send time-limited offers for a specific shift." />
-      <DashboardNav label="Organization dashboard" items={orgNav(orgId, roleIn(orgId) === 'org_admin')} />
       <Card className="mb-4">
         <form className="grid gap-3 sm:grid-cols-3" onSubmit={(e) => {
           e.preventDefault(); const f = new FormData(e.currentTarget); const n = new URLSearchParams()
@@ -171,7 +167,7 @@ function ApplicantCard({ a, onDone, onError }: { a: OrgApplication; onDone: (t: 
 /** Organization profile, contact details, logo and private verification documents (org admins). */
 export function OrgSettingsPage() {
   const { orgId = '' } = useParams()
-  const { roleIn, refresh } = useAuth()
+  const { refresh } = useAuth()
   const qc = useQueryClient()
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
@@ -232,7 +228,6 @@ export function OrgSettingsPage() {
   return (
     <>
       <PageHeader title="Profile & verification" subtitle={<span className="inline-flex items-center gap-2"><StatusBadge status={o.status} /> {o.name}</span>} />
-      <DashboardNav label="Organization dashboard" items={orgNav(orgId, roleIn(orgId) === 'org_admin')} />
       {o.status === 'pending' && <div className="mb-4"><Alert tone="warning">Pending verification. Complete the details below and upload registration documents so administrators can verify you. Until then you can prepare drafts but cannot publish.</Alert></div>}
       <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
       <div className="grid gap-6 lg:grid-cols-3">

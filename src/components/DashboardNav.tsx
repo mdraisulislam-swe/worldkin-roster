@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router'
-import { VOLUNTEER_NAV, type NavItem } from '../lib/nav'
+import type { NavItem } from '../lib/nav'
 
 /** Section navigation inside a dashboard (scrolls horizontally on small screens). */
 export function DashboardNav({ label, items }: { label: string; items: NavItem[] }) {
@@ -18,8 +18,4 @@ export function DashboardNav({ label, items }: { label: string; items: NavItem[]
       </ul>
     </nav>
   )
-}
-
-export function VolunteerNav() {
-  return <DashboardNav label="Volunteer dashboard" items={VOLUNTEER_NAV} />
 }

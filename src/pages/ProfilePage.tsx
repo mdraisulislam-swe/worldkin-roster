@@ -6,11 +6,10 @@ import { toAppError } from '../lib/errors'
 import { fieldErrors, volunteerProfileSchema } from '../lib/validation'
 import { getMyPhone, saveMyPhone, updateProfileFull, uploadImage, type ProfileExtra } from '../lib/platform'
 import { Alert, Button, Card, LoadingState, PageHeader, TextArea, TextField } from '../components/ui'
-import { VolunteerNav } from '../components/DashboardNav'
 
 /** Volunteer profile and account settings. Phone is stored privately (owner and platform admins only). */
 export function ProfilePage() {
-  const { session, profile, memberships, refresh } = useAuth()
+  const { session, profile, refresh } = useAuth()
   const uid = session!.user.id
   const qc = useQueryClient()
   const phone = useQuery({ queryKey: ['my-phone', uid], queryFn: () => getMyPhone(uid) })
@@ -55,7 +54,6 @@ export function ProfilePage() {
   return (
     <>
       <PageHeader title="Profile & settings" subtitle={<>Signed in as {session?.user.email} · {profile.platform_role === 'platform_admin' ? 'platform admin' : 'volunteer'}</>} />
-      {memberships.length === 0 && <VolunteerNav />}
       {p.suspended_at && <div className="mb-4"><Alert tone="error">Your account is suspended, so you cannot join, apply or accept offers. The reason is in your <Link className="underline" to="/me/notifications">notifications</Link>.</Alert></div>}
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">

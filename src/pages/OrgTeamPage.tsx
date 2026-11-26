@@ -9,8 +9,6 @@ import { formatDateTime } from '../lib/format'
 import { fieldErrors, inviteSchema } from '../lib/validation'
 import { Alert, Button, Card, ErrorState, LoadingState, PageHeader, Select, StatusBadge, TextField } from '../components/ui'
 import { useDialog } from '../components/dialog'
-import { DashboardNav } from '../components/DashboardNav'
-import { orgNav } from '../lib/nav'
 
 /**
  * Team management (org admins). Invites are consent-based: the response never
@@ -53,7 +51,6 @@ export function OrgTeamPage() {
   return (
     <>
       <PageHeader title="Team" subtitle="Organization admins and coordinators. New staff join by accepting an email invite." />
-      <DashboardNav label="Organization dashboard" items={orgNav(orgId, true)} />
       <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
       <div className="grid gap-6 lg:grid-cols-2">
         <section aria-labelledby="mem-h">

@@ -9,7 +9,6 @@ import { CAUSE_LABELS, formatShiftWindow } from '../lib/format'
 import { downloadIcs } from '../lib/calendar'
 import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Stat, StatusBadge } from '../components/ui'
 import { useDialog } from '../components/dialog'
-import { VolunteerNav } from '../components/DashboardNav'
 import { getMyApplications, getNotifications } from '../lib/platform'
 import { firstName, groupByDay, profileCompletion, summarizeApplications } from '../lib/dashboard'
 import { formatDateTime } from '../lib/format'
@@ -63,7 +62,6 @@ export function MyShiftsPage() {
     <>
       <PageHeader title={name ? `Welcome back, ${name}` : 'Volunteer dashboard'} subtitle="Your applications, offers, shifts and verified volunteer hours in one place."
         actions={<Link to="/explore" className="rounded-md bg-brand-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-800">Find opportunities</Link>} />
-      <VolunteerNav />
       <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
 
       <section className="mb-8 grid gap-4 lg:grid-cols-3" aria-labelledby="next-h">

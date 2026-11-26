@@ -99,10 +99,10 @@ export function AdminUsersPage() {
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && <EmptyState title="No users found" />}
       {q.data && q.data.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-black/10 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-neutral-100 bg-white shadow-[0_1px_2px_rgba(20,26,34,0.04)]">
           <table className="w-full min-w-[720px] text-left text-sm">
             <caption className="sr-only">Users</caption>
-            <thead className="border-b border-black/10 text-xs uppercase text-ink-500">
+            <thead className="border-b border-neutral-100 bg-surface text-xs uppercase tracking-wide text-ink-500">
               <tr><th scope="col" className="p-2">User</th><th scope="col" className="p-2">Location</th><th scope="col" className="p-2">Activity</th><th scope="col" className="p-2">Status</th><th scope="col" className="p-2"><span className="sr-only">Actions</span></th></tr>
             </thead>
             <tbody>

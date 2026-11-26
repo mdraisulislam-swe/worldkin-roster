@@ -5,6 +5,8 @@ import { Card } from './ui'
 import { Icon } from './Icon'
 
 const pill = 'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold'
+/** Neutral fact badge (how to join, timing, seats): outline, no colour, so only pay type and urgency are coloured. */
+const fact = `${pill} border border-neutral-100 bg-white text-ink-700`
 const COMP_TONE: Record<CompensationType, string> = {
   voluntary: 'bg-brand-50 text-brand-800',
   stipend: 'bg-sky-50 text-sky-900',
@@ -32,10 +34,10 @@ export function OpportunityCardView({ o, now }: { o: OpportunityCard; now: numbe
       <div className="mt-3 flex flex-wrap gap-1.5">
         <CompensationBadge type={o.compensation_type} />
         {o.selection_mode === 'application'
-          ? <span className={`${pill} bg-amber-50 text-amber-900`}>Apply · selection</span>
-          : <span className={`${pill} bg-emerald-50 text-emerald-900`}>Instant sign-up</span>}
-        {o.next_shift_at && <span className={`${pill} bg-brand-50 text-brand-800`}>{startsIn(o.next_shift_at, now)}</span>}
-        {o.selection_mode === 'open' && spots && <span className={`${pill} ${spots.tone === 'warn' ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-800'}`}>{spots.text}</span>}
+          ? <span className={fact}><Icon name="file-text" size={13} />Apply · selection</span>
+          : <span className={fact}><Icon name="check" size={13} />Instant sign-up</span>}
+        {o.next_shift_at && <span className={fact}><Icon name="calendar" size={13} />{startsIn(o.next_shift_at, now)}</span>}
+        {o.selection_mode === 'open' && spots && <span className={spots.tone === 'warn' ? `${pill} bg-amber-100 text-amber-900` : fact}>{spots.tone === 'warn' && <Icon name="alert" size={13} />}{spots.text}</span>}
       </div>
       <div className="mt-auto pt-4 text-sm text-ink-700"><div className="border-t border-neutral-100 pt-3">
         {o.application_deadline
@@ -58,7 +60,7 @@ export function OrgCardView({ o }: { o: OrgCard }) {
         <p className="text-sm text-ink-500">{o.city ? `${o.city}, ` : ''}{o.country_code}</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <span className={`${pill} bg-brand-50 text-brand-800`}><Icon name="shield-check" size={13} />Verified</span>
-          <span className={`${pill} bg-slate-100 text-slate-800`}>{o.published_opportunities} open opportunit{o.published_opportunities === 1 ? 'y' : 'ies'}</span>
+          <span className={fact}>{o.published_opportunities} open opportunit{o.published_opportunities === 1 ? 'y' : 'ies'}</span>
           {o.review_count > 0 && <span className={`${pill} bg-amber-50 text-amber-900`}>★ {o.average_rating} ({o.review_count})</span>}
         </div>
       </div>

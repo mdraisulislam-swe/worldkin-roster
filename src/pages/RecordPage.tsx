@@ -5,7 +5,6 @@ import { toAppError } from '../lib/errors'
 import { useNow } from '../lib/useNow'
 import { CAUSE_LABELS, formatDateTime } from '../lib/format'
 import { Button, EmptyState, ErrorState, LoadingState } from '../components/ui'
-import { VolunteerNav } from '../components/DashboardNav'
 import { ParticipationSection } from './VolunteerPages'
 import { summarizeExperience, type RecordRow } from '../lib/dashboard'
 import { hoursByMonth } from '../lib/calendarGrid'
@@ -34,7 +33,6 @@ export function RecordPage() {
 
   return (
     <>
-    <VolunteerNav />
     <article className="mx-auto max-w-3xl rounded-lg border border-black/10 bg-white p-6 print:border-0 print:p-0">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>

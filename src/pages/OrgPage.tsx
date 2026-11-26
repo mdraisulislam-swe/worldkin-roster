@@ -6,8 +6,6 @@ import { toAppError } from '../lib/errors'
 import { useNow } from '../lib/useNow'
 import { CAUSE_LABELS, MODE_LABELS } from '../lib/format'
 import { Alert, CapacityMeter, Card, EmptyState, ErrorState, LoadingState, PageHeader, Stat, StatusBadge } from '../components/ui'
-import { DashboardNav } from '../components/DashboardNav'
-import { orgNav } from '../lib/nav'
 import { getOrgApplications, getOrgFeedback } from '../lib/platform'
 import { groupByDay } from '../lib/dashboard'
 
@@ -52,7 +50,6 @@ export function OrgPage() {
           </>
         }
       />
-      <DashboardNav label="Organization dashboard" items={orgNav(orgId, isAdmin)} />
       {o.status === 'pending' && <div className="mb-6"><Alert tone="warning">Awaiting verification by a Worldkin administrator. You can prepare drafts, but publishing unlocks after verification.{isAdmin && <> <Link className="underline" to={`/org/${orgId}/settings`}>Complete your details and upload verification documents</Link>.</>}</Alert></div>}
       {(o.status === 'suspended' || o.status === 'rejected') && (
         <div className="mb-6"><Alert tone="error">This organization is {o.status}{o.status_reason ? `: ${o.status_reason}` : ''}. Public listings and new sign-ups are disabled.</Alert></div>

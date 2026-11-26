@@ -1,24 +1,26 @@
-/** Dashboard section links (data only; rendered by DashboardNav). */
-export type NavItem = { to: string; label: string; end?: boolean; badge?: number }
+import type { IconName } from '../components/Icon'
+
+/** Dashboard section links (data only; rendered by DashboardNav and WorkspaceLayout). */
+export type NavItem = { to: string; label: string; end?: boolean; badge?: number; icon?: IconName }
 
 export const VOLUNTEER_NAV: NavItem[] = [
-  { to: '/me', label: 'Overview & shifts', end: true },
-  { to: '/me/applications', label: 'Applications & offers' },
-  { to: '/me/calendar', label: 'Calendar' },
-  { to: '/me/record', label: 'Hours & certificates' },
-  { to: '/me/notifications', label: 'Notifications' },
-  { to: '/me/complaints', label: 'Complaints' },
-  { to: '/me/profile', label: 'Profile & settings' },
+  { to: '/me', label: 'Overview & shifts', end: true, icon: 'home' },
+  { to: '/me/applications', label: 'Applications & offers', icon: 'briefcase' },
+  { to: '/me/calendar', label: 'Calendar', icon: 'calendar' },
+  { to: '/me/record', label: 'Hours & certificates', icon: 'award' },
+  { to: '/me/notifications', label: 'Notifications', icon: 'bell' },
+  { to: '/me/complaints', label: 'Complaints', icon: 'flag' },
+  { to: '/me/profile', label: 'Profile & settings', icon: 'user' },
 ]
 
 export function orgNav(orgId: string, isAdmin: boolean): NavItem[] {
   return [
-    { to: `/org/${orgId}`, label: 'Overview', end: true },
-    { to: `/org/${orgId}/applications`, label: 'Applicants & offers' },
+    { to: `/org/${orgId}`, label: 'Overview', end: true, icon: 'home' },
+    { to: `/org/${orgId}/applications`, label: 'Applicants & offers', icon: 'inbox' },
     ...(isAdmin ? [
-      { to: `/org/${orgId}/settings`, label: 'Profile & verification' },
-      { to: `/org/${orgId}/team`, label: 'Team' },
-      { to: `/org/${orgId}/audit`, label: 'Audit log' },
+      { to: `/org/${orgId}/settings`, label: 'Profile & verification', icon: 'shield-check' as const },
+      { to: `/org/${orgId}/team`, label: 'Team', icon: 'users' as const },
+      { to: `/org/${orgId}/audit`, label: 'Audit log', icon: 'list' as const },
     ] : []),
   ]
 }

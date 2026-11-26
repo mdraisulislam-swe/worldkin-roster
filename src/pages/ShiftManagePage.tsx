@@ -111,10 +111,10 @@ export function ShiftManagePage() {
         {roster.isError && <ErrorState message={toAppError(roster.error).message} onRetry={() => roster.refetch()} />}
         {roster.data?.length === 0 && <EmptyState title="Nobody has signed up yet" />}
         {rows.length > 0 && (
-          <div className="overflow-x-auto rounded-lg border border-black/10 bg-white">
+          <div className="overflow-x-auto rounded-xl border border-neutral-100 bg-white shadow-[0_1px_2px_rgba(20,26,34,0.04)]">
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Volunteers on this shift</caption>
-              <thead className="bg-black/5 text-xs uppercase text-ink-500">
+              <thead className="border-b border-neutral-100 bg-surface text-xs uppercase tracking-wide text-ink-500">
                 <tr><th scope="col" className="px-3 py-2">Volunteer</th><th scope="col" className="px-3 py-2">Skills</th><th scope="col" className="px-3 py-2">Status</th><th scope="col" className="px-3 py-2">Joined</th><th scope="col" className="px-3 py-2">Actions</th></tr>
               </thead>
               <tbody>

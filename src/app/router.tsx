@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import { createBrowserRouter, redirect } from 'react-router'
 import { AppShell } from '../components/layout/AppShell'
+import { OrgWorkspace, VolunteerWorkspace } from '../components/layout/WorkspaceLayout'
 import { RequireAuth, RequireOrgRole, RequirePlatformAdmin } from '../auth/guards'
 import { HomePage } from '../pages/HomePage'
 import { NotFoundPage } from '../pages/NotFoundPage'
@@ -75,25 +76,40 @@ export const router = createBrowserRouter([
       // /login is a common guess for the sign-in page; keep ?next= when redirecting.
       { path: 'login', loader: ({ request }) => redirect('/signin' + new URL(request.url).search) },
 
-      { path: 'me', element: <RequireAuth><MyShiftsPage /></RequireAuth> },
-      { path: 'me/record', element: <RequireAuth><RecordPage /></RequireAuth> },
-      { path: 'me/calendar', element: <RequireAuth><CalendarPage /></RequireAuth> },
-      { path: 'me/profile', element: <RequireAuth><ProfilePage /></RequireAuth> },
-      { path: 'me/applications', element: <RequireAuth><MyApplicationsPage /></RequireAuth> },
-      { path: 'me/notifications', element: <RequireAuth><NotificationsPage /></RequireAuth> },
-      { path: 'me/complaints', element: <RequireAuth><ComplaintsPage /></RequireAuth> },
+      // Volunteer workspace: a layout route (sidebar shell). URLs are unchanged.
+      {
+        path: 'me',
+        element: <RequireAuth><VolunteerWorkspace /></RequireAuth>,
+        children: [
+          { index: true, element: <MyShiftsPage /> },
+          { path: 'record', element: <RecordPage /> },
+          { path: 'calendar', element: <CalendarPage /> },
+          { path: 'profile', element: <ProfilePage /> },
+          { path: 'applications', element: <MyApplicationsPage /> },
+          { path: 'notifications', element: <NotificationsPage /> },
+          { path: 'complaints', element: <ComplaintsPage /> },
+        ],
+      },
+      // Printable certificate stays outside the workspace shell.
       { path: 'me/certificate/:id', element: <RequireAuth><CertificatePage /></RequireAuth> },
 
       { path: 'orgs', element: <RequireAuth><MyOrgsPage /></RequireAuth> },
       { path: 'orgs/new', element: <RequireAuth><OrgCreatePage /></RequireAuth> },
-      { path: 'org/:orgId', element: <RequireAuth><RequireOrgRole><OrgPage /></RequireOrgRole></RequireAuth> },
-      { path: 'org/:orgId/opportunities/new', element: <RequireAuth><RequireOrgRole><OpportunityEditorPage /></RequireOrgRole></RequireAuth> },
-      { path: 'org/:orgId/opportunities/:oppId', element: <RequireAuth><RequireOrgRole><OpportunityEditorPage /></RequireOrgRole></RequireAuth> },
-      { path: 'org/:orgId/shifts/:shiftId', element: <RequireAuth><RequireOrgRole><ShiftManagePage /></RequireOrgRole></RequireAuth> },
-      { path: 'org/:orgId/applications', element: <RequireAuth><RequireOrgRole><OrgApplicationsPage /></RequireOrgRole></RequireAuth> },
-      { path: 'org/:orgId/settings', element: <RequireAuth><RequireOrgRole adminOnly><OrgSettingsPage /></RequireOrgRole></RequireAuth> },
-      { path: 'org/:orgId/team', element: <RequireAuth><RequireOrgRole adminOnly><OrgTeamPage /></RequireOrgRole></RequireAuth> },
-      { path: 'org/:orgId/audit', element: <RequireAuth><RequireOrgRole adminOnly><AuditPage /></RequireOrgRole></RequireAuth> },
+      // Organization workspace: members only (same guard as before); admin-only pages keep their own guard.
+      {
+        path: 'org/:orgId',
+        element: <RequireAuth><RequireOrgRole><OrgWorkspace /></RequireOrgRole></RequireAuth>,
+        children: [
+          { index: true, element: <OrgPage /> },
+          { path: 'opportunities/new', element: <OpportunityEditorPage /> },
+          { path: 'opportunities/:oppId', element: <OpportunityEditorPage /> },
+          { path: 'shifts/:shiftId', element: <ShiftManagePage /> },
+          { path: 'applications', element: <OrgApplicationsPage /> },
+          { path: 'settings', element: <RequireOrgRole adminOnly><OrgSettingsPage /></RequireOrgRole> },
+          { path: 'team', element: <RequireOrgRole adminOnly><OrgTeamPage /></RequireOrgRole> },
+          { path: 'audit', element: <RequireOrgRole adminOnly><AuditPage /></RequireOrgRole> },
+        ],
+      },
 
       { path: 'admin', element: <RequireAuth><RequirePlatformAdmin><AdminOverviewPage /></RequirePlatformAdmin></RequireAuth> },
       { path: 'admin/organizations', element: <RequireAuth><RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin></RequireAuth> },
