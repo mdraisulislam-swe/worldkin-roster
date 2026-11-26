@@ -47,13 +47,17 @@
 | **D06–D07** | `#/o/offers`, `#/o/attendance` | `/org/:id/shifts/:shiftId` | **VERIFIED (R2)** | Matched: capacity and cancel cards, "Roster & attendance" table with initials, Present / No-show buttons, auto-promotion note and the audit-log alert. Same mutations and confirmation dialogs as before. Dispute flow NOT CONNECTED (labelled "planned"). |
 | **D08** | `#/o/profile` | `/org/:id/settings` | **VERIFIED (R2)** | Matched: Public profile / Public contact / Private & verification tabs, one Save changes, Logo and Verification documents cards, Preview public profile action. Errors on a hidden tab are listed in an alert with links. Fixed during R2: tab strip and file inputs overflowed at 375 / 1024 px. |
 | E01 | `#/a/overview` | `/admin` | VERIFIED | Role views (wk13), platform health NOT CONNECTED |
+| **E02** | `#/a/verify` | `/admin/organizations` | **VERIFIED (R3)** | Matched: status tabs; card per organization with initials, cause / country / date, website, a private "Submitted details & documents" panel (open for pending), Verify / Reject buttons. The right-hand queue/history column and the reviewer checklist are NOT CONNECTED (a checklist that is not saved would mislead). A reviewer cannot act on their own organization (unchanged). |
+| **E03** | `#/a/users` | `/admin/users` | **VERIFIED (R3)** | Matched: search card, users table with initials, activity, status badge and Suspend / Lift suspension; footer note that admins cannot be suspended here. Role and status filter selects are NOT CONNECTED (server search is name/email only). |
+| **E04** | `#/a/moderation` | `/admin/opportunities`, `/admin/feedback` | **VERIFIED (R3)** | "Content moderation" heading with section tabs that link the two existing routes (no URL change), Published / Closed tabs, Close listing and Hide / Restore. The Reports queue and Media review tabs are NOT CONNECTED (no report/media tables). |
+| **E05** | `#/a/disputes` | `/admin/complaints` | **VERIFIED (R3, styling)** | Status tabs, complaint cards, Start review / Resolve / Dismiss with a required response. The prototype's two-sided no-show dispute is NOT CONNECTED (labelled planned in the shift page). |
+| — | admin sidebar | `ADMIN_NAV` | **VERIFIED (R3)** | Labels aligned: User management, Content moderation, Feedback & reviews. Routes unchanged. |
 | E06 | `#/a/audit` | `/admin/audit` | VERIFIED | — |
 | 09 | `#/system/states` | shared states | VERIFIED | — |
 | — | `#/404` | `NotFoundPage` | VERIFIED | — |
 
 ## Remaining (next batches)
 
-- **R3 Admin:** E02, E03, E04, E05.
 - **R4 Public:** A01, A03, A04, A05, A07.
 - **R5 Auth:** B01, B02, B04–B06.
 - **R6 Content:** A12, D09.

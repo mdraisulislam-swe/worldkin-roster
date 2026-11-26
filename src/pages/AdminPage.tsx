@@ -5,7 +5,7 @@ import { getOrganizationsForReview, reviewOrganization } from '../lib/api'
 import type { Enums } from '../lib/database.types'
 import { toAppError } from '../lib/errors'
 import { CAUSE_LABELS, formatDateTime } from '../lib/format'
-import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge } from '../components/ui'
+import { Alert, Button, Card, EmptyState, ErrorState, Initials, LoadingState, PageHeader, StatusBadge, Tabs } from '../components/ui'
 import { useDialog } from '../components/dialog'
 import { OrgVerificationDetails } from './AdminPlatformPages'
 
@@ -36,37 +36,44 @@ export function AdminPage() {
   const memberOf = new Set(memberships.map((m) => m.org_id))
 
   return (
-    <>
-      <PageHeader title="Organization verification" subtitle="Review registration details and documents before an organization can publish opportunities." />
-      <div className="mb-4 max-w-xs">
-        <Select label="Show" value={filter} onChange={(e) => setFilter(e.currentTarget.value as Decision | '')}
-          options={[{ value: 'pending', label: 'Pending review' }, { value: 'verified', label: 'Verified' }, { value: 'suspended', label: 'Suspended' }, { value: 'rejected', label: 'Rejected' }, { value: '', label: 'All' }]} />
-      </div>
-      <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
+    <div className="flex min-w-0 flex-col gap-6 [&>*:first-child]:mb-0">
+      <PageHeader title="Organization verification" subtitle="Review submitted details and private documents before an organization can publish." />
+      <Tabs label="Verification status" controls="org-queue" value={filter || 'all'} onChange={(v) => setFilter(v === 'all' ? '' : v)}
+        tabs={[{ value: 'pending', label: 'Pending review' }, { value: 'verified', label: 'Verified' }, { value: 'suspended', label: 'Suspended' }, { value: 'rejected', label: 'Rejected' }, { value: 'all', label: 'All' }]} />
+      <div aria-live="polite" className="empty:-mt-6">{notice && <Alert tone={notice.tone}>{notice.text}</Alert>}</div>
+      <div id="org-queue" role="tabpanel" aria-labelledby={`tab-org-queue-${filter || 'all'}`} className="flex flex-col gap-3">
       {orgs.isPending && <LoadingState />}
       {orgs.isError && <ErrorState message={toAppError(orgs.error).message} onRetry={() => orgs.refetch()} />}
       {orgs.data?.length === 0 && <EmptyState title="Nothing to review here" />}
       <ul className="flex flex-col gap-3">
         {orgs.data?.map((o) => (
           <li key={o.id}>
-            <Card>
+            <Card className="sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold">{o.name} <span className="text-sm font-normal text-ink-500">/{o.slug}</span></p>
-                  <p className="text-sm text-ink-500">{CAUSE_LABELS[o.cause]} · {o.country_code} · registered {formatDateTime(o.created_at)}</p>
-                  {o.website && <p className="text-sm"><a className="text-brand-700 underline" href={o.website} target="_blank" rel="noreferrer noopener">{o.website}</a></p>}
-                  {o.description && <p className="mt-2 max-w-2xl text-sm text-ink-700">{o.description}</p>}
-                  {o.status_reason && <p className="mt-2 text-sm text-ink-500">Reason: {o.status_reason}</p>}
-                  <details className="mt-2"><summary className="cursor-pointer text-sm text-brand-700">Verification details &amp; documents</summary><div className="mt-2"><OrgVerificationDetails orgId={o.id} /></div></details>
+                <div className="flex min-w-0 items-start gap-3">
+                  <Initials name={o.name} size={40} />
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold">{o.name} <span className="text-sm font-normal text-ink-500">/{o.slug}</span></h2>
+                    <p className="text-sm text-ink-500">{CAUSE_LABELS[o.cause]} · {o.country_code} · registered {formatDateTime(o.created_at)}</p>
+                  </div>
                 </div>
                 <StatusBadge status={o.status} />
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                <div><dt className="text-xs text-ink-500">Website</dt><dd className="break-all">{o.website ? <a className="text-brand-700 underline" href={o.website} target="_blank" rel="noreferrer noopener">{o.website}</a> : '—'}</dd></div>
+                {o.status_reason && <div><dt className="text-xs text-ink-500">Decision note</dt><dd>{o.status_reason}</dd></div>}
+              </dl>
+              {o.description && <p className="mt-3 max-w-2xl text-sm text-ink-700">{o.description}</p>}
+              <details className="mt-4 rounded-lg border border-neutral-100 bg-[#fbfcfa] px-4 py-3" open={o.status === 'pending'}>
+                <summary className="cursor-pointer text-sm font-semibold">Submitted details &amp; documents (private)</summary>
+                <div className="mt-3"><OrgVerificationDetails orgId={o.id} /></div>
+              </details>
+              <div className="mt-4 flex flex-wrap gap-2">
                 {memberOf.has(o.id) ? (
                   <p className="text-sm text-amber-800">You are a member of this organization; another admin must review it.</p>
                 ) : (
                   ACTIONS[o.status].map((a) => (
-                    <Button key={a.to} variant={a.variant} busy={review.isPending && review.variables?.orgId === o.id}
+                    <Button key={a.to} size="sm" variant={a.variant} busy={review.isPending && review.variables?.orgId === o.id}
                       onClick={async () => {
                         let reason: string | undefined
                         if (a.reason) {
@@ -85,6 +92,7 @@ export function AdminPage() {
           </li>
         ))}
       </ul>
-    </>
+      </div>
+    </div>
   )
 }
