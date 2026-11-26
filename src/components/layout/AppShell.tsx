@@ -58,6 +58,7 @@ export function AppShell() {
   const nav = (
     <>
       <NavLink to="/explore" className={linkCls} onClick={() => setOpen(false)}>Explore</NavLink>
+      <NavLink to="/events" className={linkCls} onClick={() => setOpen(false)}>Events</NavLink>
       <NavLink to="/organizations" end className={linkCls} onClick={() => setOpen(false)}>Organizations</NavLink>
       {session && <NavLink to="/me" className={linkCls} onClick={() => setOpen(false)}>My dashboard</NavLink>}
       {session && (
@@ -144,6 +145,7 @@ export function AppShell() {
           <nav aria-label="Discover" className="flex flex-col gap-2">
             <p className="font-semibold text-ink-900">Discover</p>
             <Link className="text-ink-700 hover:underline" to="/explore">Explore opportunities</Link>
+            <Link className="text-ink-700 hover:underline" to="/events">Upcoming events</Link>
             <Link className="text-ink-700 hover:underline" to="/organizations">Verified organizations</Link>
           </nav>
           <nav aria-label="Get started" className="flex flex-col gap-2">

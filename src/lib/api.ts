@@ -44,6 +44,8 @@ export async function searchOpportunities(p: SearchParams) {
 }
 
 export async function getOpportunity(id: string) {
+  // A malformed id is "not available", never a raw database error.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new AppError('This opportunity is not available.', 'NOT_FOUND')
   const row = unwrap(
     await db().from('opportunities').select('*, organizations(id, name, slug, status, website)').eq('id', id).maybeSingle(),
   )

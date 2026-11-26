@@ -89,6 +89,17 @@ export function OpportunityPage() {
               <Link className="text-brand-700 underline" to={`/me/complaints?org=${o.org_id}&opportunity=${o.id}`}>Report it to Worldkin moderators</Link>.
             </p>
           </Card>
+          <Card>
+            <h2 className="mb-3 font-semibold">What happens next</h2>
+            <ol className="flex flex-col gap-2 text-sm">
+              {(byApplication ? APPLICATION_STEPS : OPEN_STEPS).map((step, i) => (
+                <li key={step} className="flex gap-3">
+                  <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-800">{i + 1}</span>
+                  <span className="text-ink-700">{step}</span>
+                </li>
+              ))}
+            </ol>
+          </Card>
           {(o.skills_wanted.length > 0 || o.requirements) && (
             <Card>
               <h2 className="mb-2 font-semibold">Skills and eligibility</h2>
@@ -179,3 +190,19 @@ export function OpportunityPage() {
     </>
   )
 }
+
+const APPLICATION_STEPS = [
+  'Sign in and apply with your profile (one active application per opportunity).',
+  'The organization reviews applicants and may move you to "under review".',
+  'If selected, you receive an offer for a specific shift — accept or decline within 72 hours.',
+  'Accepting books your seat safely; if the shift filled meanwhile you join the waitlist in order.',
+  'After the shift, organization staff confirm your attendance and hours.',
+  'Verified hours appear on your certificate and experience passport.',
+]
+const OPEN_STEPS = [
+  'Sign in and join any shift with free seats — no application needed.',
+  'If a shift is full you join a first-come waitlist and are promoted automatically when a seat opens.',
+  'Add the shift to your calendar; you can cancel before it starts.',
+  'After the shift, organization staff confirm your attendance and hours.',
+  'Verified hours appear on your certificate and experience passport.',
+]

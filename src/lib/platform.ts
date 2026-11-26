@@ -100,7 +100,7 @@ export async function listOrganizations(p: { query?: string; country?: string; c
 export type OrganizationFull = {
   id: string; name: string; slug: string; description: string | null; cause: Enums<'cause_category'>; country_code: string
   website: string | null; status: Enums<'org_status'>; status_reason: string | null; org_type: OrgType; city: string | null
-  phone: string | null; official_email: string | null; logo_url: string | null; created_at: string
+  phone: string | null; official_email: string | null; logo_url: string | null; created_at: string; reviewed_at?: string | null
 }
 export async function getOrganizationBySlug(slug: string) {
   const list = await rows<OrganizationFull>(raw().from('organizations').select('*').eq('slug', slug).limit(1))

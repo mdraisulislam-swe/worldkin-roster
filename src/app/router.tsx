@@ -14,6 +14,8 @@ const SignUpPage = page(() => import('../pages/AuthPages'), 'SignUpPage')
 const AuthConfirmedPage = page(() => import('../pages/AuthPages'), 'AuthConfirmedPage')
 const ExplorePage = page(() => import('../pages/ExplorePage'), 'ExplorePage')
 const OpportunityPage = page(() => import('../pages/OpportunityPage'), 'OpportunityPage')
+const EventsPage = page(() => import('../pages/EventsPages'), 'EventsPage')
+const EventDetailPage = page(() => import('../pages/EventsPages'), 'EventDetailPage')
 const MyShiftsPage = page(() => import('../pages/MyShiftsPage'), 'MyShiftsPage')
 const RecordPage = page(() => import('../pages/RecordPage'), 'RecordPage')
 const ProfilePage = page(() => import('../pages/ProfilePage'), 'ProfilePage')
@@ -57,6 +59,8 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'explore', element: <ExplorePage /> },
       { path: 'opportunities/:id', element: <OpportunityPage /> },
+      { path: 'events', element: <EventsPage /> },
+      { path: 'events/:id', element: <EventDetailPage /> },
       { path: 'signin', element: <SignInPage /> },
       { path: 'signup', element: <SignUpPage /> },
       { path: 'auth/confirmed', element: <AuthConfirmedPage /> },

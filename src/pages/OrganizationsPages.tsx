@@ -7,6 +7,9 @@ import { toAppError } from '../lib/errors'
 import { useNow } from '../lib/useNow'
 import { CardSkeletons, OpportunityCardView, OrgCardView, OrgLogo } from '../components/cards'
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge, TextField } from '../components/ui'
+import { eventTitle, getRecentEvents, getUpcomingEvents } from '../lib/events'
+
+const shortDate = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 /** Public directory of verified organizations. */
 export function OrganizationsPage() {
@@ -68,6 +71,9 @@ export function OrganizationProfilePage() {
     queryFn: async () => (await searchOpportunities({ orgId, pageSize: 50, sort: 'newest' })).rows,
   })
   const fb = useQuery({ queryKey: ['org-feedback', orgId], enabled: !!orgId, queryFn: () => getOrgFeedback(orgId!) })
+  // Public, RLS-filtered shifts of this organization's published opportunities.
+  const upcomingEv = useQuery({ queryKey: ['events', 'org', orgId], enabled: !!orgId, queryFn: () => getUpcomingEvents(Date.now(), { orgId, limit: 6 }) })
+  const recentEv = useQuery({ queryKey: ['events', 'org-recent', orgId], enabled: !!orgId, queryFn: () => getRecentEvents(Date.now(), { orgId, days: 180, limit: 6 }) })
 
   if (org.isPending) return <LoadingState />
   if (org.isError) return <ErrorState message={toAppError(org.error).message} onRetry={() => org.refetch()} />
@@ -87,7 +93,31 @@ export function OrganizationProfilePage() {
       </div>
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
-          {o.description && <Card><h2 className="mb-2 font-semibold">About</h2><p className="whitespace-pre-line text-ink-700">{o.description}</p></Card>}
+          {o.description && (
+            <Card>
+              <h2 className="mb-2 font-semibold">About</h2>
+              <p className="whitespace-pre-line text-ink-700">{o.description}</p>
+              <p className="mt-3 text-xs text-ink-500">Written by the organization.</p>
+            </Card>
+          )}
+          <section aria-labelledby="ev-h">
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <h2 id="ev-h" className="text-lg font-semibold">Upcoming events</h2>
+              <Link className="text-sm text-brand-700 underline" to="/events">All events</Link>
+            </div>
+            {upcomingEv.isPending ? <CardSkeletons count={1} /> : upcomingEv.data && upcomingEv.data.length > 0 ? (
+              <ul className="flex flex-col gap-2">
+                {upcomingEv.data.map((e) => (
+                  <li key={e.id}>
+                    <Link to={`/events/${e.id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-black/10 bg-white px-4 py-3 hover:border-brand-600">
+                      <span className="font-medium">{eventTitle(e)}</span>
+                      <span className="text-sm tabular-nums text-ink-500">{shortDate.format(new Date(e.starts_at))}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : <EmptyState title="No upcoming events scheduled" />}
+          </section>
           <section aria-labelledby="opps-h">
             <h2 id="opps-h" className="mb-3 text-lg font-semibold">Open opportunities</h2>
             {opps.isPending ? <CardSkeletons count={2} /> : opps.data && opps.data.length > 0 ? (
@@ -111,6 +141,17 @@ export function OrganizationProfilePage() {
           </section>
         </div>
         <aside className="flex flex-col gap-4">
+          <Card>
+            <h2 className="mb-2 font-semibold">Trust record</h2>
+            <ul className="flex flex-col gap-2 text-sm">
+              <li>{o.status === 'verified'
+                ? <><span className="font-medium text-emerald-800">✓ Verified by Worldkin</span>{o.reviewed_at ? <span className="text-ink-500"> on {new Date(o.reviewed_at).toLocaleDateString()}</span> : null}. Reviewed before it could publish opportunities.</>
+                : <>Not verified yet — it cannot publish opportunities until reviewed.</>}</li>
+              {fb.data?.[0] && <li>{fb.data[0].total_count} review{fb.data[0].total_count === 1 ? '' : 's'} from volunteers whose attendance was verified.</li>}
+              {recentEv.data && recentEv.data.length > 0 && <li>{recentEv.data.length} public event{recentEv.data.length === 1 ? '' : 's'} held in the last 6 months.</li>}
+            </ul>
+            <p className="mt-3 text-xs text-ink-500">Contact details and descriptions are provided by the organization.</p>
+          </Card>
           <Card>
             <h2 className="mb-2 font-semibold">Contact</h2>
             <dl className="flex flex-col gap-1 text-sm">

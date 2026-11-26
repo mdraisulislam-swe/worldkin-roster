@@ -6,6 +6,9 @@ import { getPlatformStats, listOrganizations, searchOpportunities } from '../lib
 import { useNow } from '../lib/useNow'
 import { CardSkeletons, OpportunityCardView, OrgCardView } from '../components/cards'
 import { EmptyState } from '../components/ui'
+import { eventTitle, getUpcomingEvents } from '../lib/events'
+
+const evDate = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 export function HomePage() {
   const { session } = useAuth()
@@ -14,6 +17,7 @@ export function HomePage() {
   const recent = useQuery({ queryKey: ['home', 'recent'], queryFn: () => searchOpportunities({ sort: 'newest', pageSize: 6 }) })
   const closing = useQuery({ queryKey: ['home', 'closing'], queryFn: () => searchOpportunities({ sort: 'closing', pageSize: 3 }) })
   const orgs = useQuery({ queryKey: ['home', 'orgs'], queryFn: () => listOrganizations({ pageSize: 6 }) })
+  const events = useQuery({ queryKey: ['home', 'events'], queryFn: () => getUpcomingEvents(Date.now(), { days: 30, limit: 4 }) })
 
   return (
     <div className="flex flex-col gap-16 py-4 sm:gap-20 sm:py-10">
@@ -55,6 +59,26 @@ export function HomePage() {
         </dl>
         <p className="mt-2 text-xs text-ink-500">Live counts from the platform database{stats.data ? ` · ${Number(stats.data.verified_hours).toLocaleString()} verified volunteer hours` : ''}.</p>
       </section>
+
+      {events.data && events.data.length > 0 && (
+        <section aria-labelledby="events-h">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <h2 id="events-h" className="text-2xl font-semibold tracking-tight">Upcoming events</h2>
+            <Link to="/events" className="text-sm text-brand-700 underline">All events</Link>
+          </div>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {events.data.map((e) => (
+              <li key={e.id}>
+                <Link to={`/events/${e.id}`} className="flex h-full flex-col rounded-lg border border-black/10 bg-white p-4 shadow-sm hover:border-brand-600">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-brand-700">{evDate.format(new Date(e.starts_at))}</span>
+                  <span className="mt-1 font-semibold text-ink-900">{eventTitle(e)}</span>
+                  <span className="mt-auto pt-2 text-sm text-ink-500">{e.opportunities?.organizations?.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <Listing id="closing" title="Closing soon" more="/explore?sort=closing" q={closing} now={now} empty="Nothing closing soon." />
       <Listing id="recent" title="Recently published" more="/explore?sort=newest" q={recent} now={now} empty="No opportunities published yet." />
