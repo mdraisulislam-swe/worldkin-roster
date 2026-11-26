@@ -8,6 +8,7 @@ import { toAppError } from '../lib/errors'
 import { authRedirectMessage, hasAuthFragment, readAuthRedirectError, safeNext, type AuthRedirectError } from '../lib/authRedirect'
 import { fieldErrors, signInSchema, signUpSchema } from '../lib/validation'
 import { supabase } from '../lib/supabase'
+import { OtpInput } from '../components/OtpInput'
 import { dashboardPath } from '../lib/dashboard'
 
 /**
@@ -170,7 +171,7 @@ export function SignUpPage() {
           <TextField label="Email" name="email" type="email" autoComplete="email" error={errors.email} />
           <PasswordField label="Password" name="password" autoComplete="new-password" hint="At least 8 characters" error={errors.password} />
           <Button type="submit" busy={busy}>Create account</Button>
-          <p className="text-xs text-ink-500">We will email you a confirmation link (and a 6-digit code as a backup) to verify that this address is yours.</p>
+          <p className="text-xs text-ink-500">We will email you a 6-digit code to verify that this address is yours.</p>
         </form>
       </Card>
       <p className="mt-4 text-sm text-ink-500">Already registered? <Link className="text-brand-700 underline" to="/signin">Sign in</Link>
@@ -401,6 +402,7 @@ export function VerifyEmailPage() {
     : readPendingSignup()))
   const [email, setEmail] = useState(pending?.email ?? '')
   const [code, setCode] = useState('')
+  const [codeInvalid, setCodeInvalid] = useState(false)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   const [notice, setNotice] = useState<{ tone: 'error' | 'success' | 'info'; text: string } | null>(() => (fromState?.deliveryFailed
@@ -422,27 +424,36 @@ export function VerifyEmailPage() {
   }, [done, next, navigate])
   if (session && !done) return <Navigate to={next} replace />
 
-  async function onVerify(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
+  // Verified only when Supabase accepts the code (verifyOtp type 'email'); never assumed client-side.
+  async function verify(value: string) {
     if (busy) return
     const target = (pending?.email ?? email).trim()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) return setNotice({ tone: 'error', text: 'Enter the email address you registered with.' })
-    if (!isCompleteOtp(code)) return setNotice({ tone: 'error', text: `Enter the ${OTP_LENGTH}-digit code from the email.` })
-    setBusy(true); setNotice(null)
+    if (!isCompleteOtp(value)) return setNotice({ tone: 'error', text: `Enter the ${OTP_LENGTH}-digit code from the email.` })
+    setBusy(true); setNotice(null); setCodeInvalid(false)
     try {
-      await verifySignupCode(target, code)
+      await verifySignupCode(target, value)
       clearPendingSignup()
       setDone(true)
     } catch (err) {
       const e2 = toAppError(err)
+      // Supabase reports wrong and expired codes with the same error, so the message covers both.
       setNotice({ tone: 'error', text: e2.code === 'AUTH_OTP_INVALID'
-        ? 'That code is incorrect or has expired. Check the newest email, or request a new code. If you already verified this address, sign in instead.'
+        ? 'That code is incorrect or has expired. Codes expire after 60 minutes and only the newest one works — check your latest email or press "Resend code". If you already verified this address, sign in instead.'
         : e2.message })
+      setCodeInvalid(e2.code === 'AUTH_OTP_INVALID')
       setCode('')
+      // After the boxes are re-enabled (busy=false below), return focus to the first box.
+      setTimeout(() => (document.querySelector('input[name="code"]') as HTMLInputElement | null)?.focus(), 60)
     } finally {
       setBusy(false)
     }
   }
+  function onVerify(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    void verify(code)
+  }
+  const changeEmailTo = next.startsWith('/orgs/new') ? '/signup?as=organization' : '/signup?as=volunteer'
 
   async function onResend() {
     const target = (pending?.email ?? email).trim()
@@ -482,19 +493,20 @@ export function VerifyEmailPage() {
       <p className="mb-6 text-sm text-ink-700">
         {pending?.name ? <>Welcome, {pending.name}! </> : null}
         {pending?.email
-          ? <>We sent a confirmation email to <strong>{maskEmail(pending.email)}</strong>. Open the <strong>Confirm my email</strong> button in it — or enter the {OTP_LENGTH}-digit code from the same email below.</>
-          : <>Enter the email you registered with and the {OTP_LENGTH}-digit code from your confirmation email, or open the link in that email.</>}
+          ? <>We sent a {OTP_LENGTH}-digit verification code to <strong>{maskEmail(pending.email)}</strong>. Enter it below to activate your account.</>
+          : <>Enter the email you registered with and the {OTP_LENGTH}-digit code from your verification email.</>}
       </p>
       <Card>
         <form className="flex flex-col gap-4" onSubmit={onVerify} noValidate>
           <div aria-live="polite">{notice && <Alert tone={notice.tone}>{notice.text}</Alert>}</div>
           {!pending?.email && <TextField label="Email" name="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.currentTarget.value)} />}
-          <TextField label="Verification code" name="code" value={code} autoFocus
-            inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={OTP_LENGTH + 4}
-            className="w-full rounded-md border border-black/20 bg-white px-3 py-3 text-center font-mono text-2xl tracking-[0.5em]"
-            hint="Paste the whole code or type it — spaces and dashes are ignored."
-            onChange={(e) => setCode(normalizeOtp(e.currentTarget.value))} />
-          <Button type="submit" busy={busy} disabled={!isCompleteOtp(code)}>Verify email</Button>
+          <div>
+            <p id="otp-label" className="mb-2 text-sm font-medium text-ink-900">Verification code</p>
+            <OtpInput value={code} onChange={(v) => { setCode(normalizeOtp(v)); setCodeInvalid(false) }} onComplete={(v) => void verify(v)}
+              disabled={busy} invalid={codeInvalid} describedBy="otp-hint" />
+            <p id="otp-hint" className="mt-2 text-xs text-ink-500">Type or paste the code — it checks automatically when all {OTP_LENGTH} digits are in.</p>
+          </div>
+          <Button type="submit" busy={busy} disabled={!isCompleteOtp(code)}>{busy ? 'Verifying…' : 'Verify email'}</Button>
         </form>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-black/10 pt-4 text-sm">
           <span className="text-ink-500">Didn’t get it? Check spam, or</span>
@@ -504,7 +516,7 @@ export function VerifyEmailPage() {
         </div>
       </Card>
       <p className="mt-4 text-sm text-ink-500">
-        Wrong address? <Link className="text-brand-700 underline" to="/join" onClick={() => clearPendingSignup()}>Start again</Link>
+        Wrong address? <Link className="text-brand-700 underline" to={changeEmailTo} onClick={() => clearPendingSignup()}>Change email</Link>
         {' · '}<Link className="text-brand-700 underline" to="/signin">Sign in</Link>
       </p>
     </div>

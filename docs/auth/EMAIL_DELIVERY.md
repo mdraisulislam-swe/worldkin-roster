@@ -48,3 +48,13 @@ Check: Authentication → URL Configuration must still list `https://worldkin-ro
 3. Open an already-used link again. It should show "link expired / already used" with a resend option.
 4. Register the same address again. It should show "already registered", and no email is sent.
 5. Sign out, then sign in again. Each account should land on its own dashboard.
+
+## Update — code-first verification (26 Nov 2026, evening)
+
+- **Why it felt like a magic link.** The earlier template's main button was `{{ .ConfirmationURL }}`. Following it verifies the address and signs the user in, so clicking the email skipped the code entirely.
+- **The template is now code-only:** `docs/auth/email-templates/confirm-signup.html` contains `{{ .Token }}` and no link. The app verifies the code with `verifyOtp({ email, token, type: 'email' })` on `/verify-email` (six boxes; paste and autofill supported).
+- **Owner action (Dashboard; not done by the app):**
+  1. Authentication → Emails → Templates → **Confirm signup**: subject `Your Worldkin Roster verification code`, body = the file above.
+  2. Authentication → Sign In / Providers → Email: **Email OTP Length = 6** and **Email OTP Expiration = 3600**.
+  3. Leave "Confirm email" ON.
+- `/auth/confirmed` still handles any old link emails that were already sent.
