@@ -109,6 +109,7 @@ export function SignUpPage() {
   const [params] = useSearchParams()
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
+  const [existing, setExisting] = useState(false)
   const [busy, setBusy] = useState(false)
   const navigate = useNavigate()
   const asOrg = params.get('as') === 'organization'
@@ -120,9 +121,13 @@ export function SignUpPage() {
     if (busy) return
     const parsed = signUpSchema.safeParse(Object.fromEntries(new FormData(e.currentTarget)))
     if (!parsed.success) return setErrors(fieldErrors(parsed.error))
-    setErrors({}); setFormError(null); setBusy(true)
+    setErrors({}); setFormError(null); setExisting(false); setBusy(true)
     try {
-      const { needsConfirmation } = await signUp(parsed.data.email, parsed.data.password, parsed.data.fullName, next, asOrg ? 'organization' : 'volunteer')
+      const { needsConfirmation, alreadyRegistered } = await signUp(parsed.data.email, parsed.data.password, parsed.data.fullName, next, asOrg ? 'organization' : 'volunteer')
+      if (alreadyRegistered) {
+        setExisting(true)
+        return
+      }
       if (needsConfirmation) {
         // Email stays in this tab's memory/sessionStorage, never in the URL.
         const pending = { email: parsed.data.email, name: parsed.data.fullName, next, sentAt: Date.now() }
@@ -153,11 +158,18 @@ export function SignUpPage() {
       <Card>
         <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
           {formError && <Alert tone="error">{formError}</Alert>}
+          {existing && (
+            <Alert tone="info">
+              This email address is already registered, so no new email was sent.{' '}
+              <Link className="underline" to="/signin">Sign in</Link> or{' '}
+              <Link className="underline" to="/forgot-password">reset your password</Link>.
+            </Alert>
+          )}
           <TextField label={asOrg ? 'Your full name (representative)' : 'Full name'} name="fullName" autoComplete="name" error={errors.fullName} />
           <TextField label="Email" name="email" type="email" autoComplete="email" error={errors.email} />
           <PasswordField label="Password" name="password" autoComplete="new-password" hint="At least 8 characters" error={errors.password} />
           <Button type="submit" busy={busy}>Create account</Button>
-          <p className="text-xs text-ink-500">We will email you a 6-digit code to verify that this address is yours.</p>
+          <p className="text-xs text-ink-500">We will email you a confirmation link (and a 6-digit code as a backup) to verify that this address is yours.</p>
         </form>
       </Card>
       <p className="mt-4 text-sm text-ink-500">Already registered? <Link className="text-brand-700 underline" to="/signin">Sign in</Link>
@@ -471,8 +483,8 @@ export function VerifyEmailPage() {
       <p className="mb-6 text-sm text-ink-700">
         {pending?.name ? <>Welcome, {pending.name}! </> : null}
         {pending?.email
-          ? <>We sent a {OTP_LENGTH}-digit code to <strong>{maskEmail(pending.email)}</strong>. Enter it below to activate your account.</>
-          : <>Enter the email you registered with and the {OTP_LENGTH}-digit code we sent you.</>}
+          ? <>We sent a confirmation email to <strong>{maskEmail(pending.email)}</strong>. Open the <strong>Confirm my email</strong> button in it — or enter the {OTP_LENGTH}-digit code from the same email below.</>
+          : <>Enter the email you registered with and the {OTP_LENGTH}-digit code from your confirmation email, or open the link in that email.</>}
       </p>
       <Card>
         <form className="flex flex-col gap-4" onSubmit={onVerify} noValidate>
@@ -493,7 +505,7 @@ export function VerifyEmailPage() {
         </div>
       </Card>
       <p className="mt-4 text-sm text-ink-500">
-        You can also use the one-click link in the same email. Wrong address? <Link className="text-brand-700 underline" to="/join" onClick={() => clearPendingSignup()}>Start again</Link>
+        Wrong address? <Link className="text-brand-700 underline" to="/join" onClick={() => clearPendingSignup()}>Start again</Link>
         {' · '}<Link className="text-brand-700 underline" to="/signin">Sign in</Link>
       </p>
     </div>

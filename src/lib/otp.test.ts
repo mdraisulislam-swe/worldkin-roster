@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cooldownLeft, isCompleteOtp, maskEmail, normalizeOtp } from './otp'
+import { cooldownLeft, isCompleteOtp, isExistingAccountSignup, maskEmail, normalizeOtp } from './otp'
 import { toAppError } from './errors'
 
 describe('email verification code helpers', () => {
@@ -31,5 +31,16 @@ describe('email verification code helpers', () => {
     expect(toAppError({ message: 'Token has expired or is invalid' }).code).toBe('AUTH_OTP_INVALID')
     expect(toAppError({ message: 'Email not confirmed' }).code).toBe('AUTH_UNCONFIRMED')
     expect(toAppError({ message: 'Invalid login credentials' }).code).toBe('AUTH_INVALID')
+  })
+})
+
+describe('repeated sign-up detection', () => {
+  it('flags the obfuscated user Supabase returns for an already-registered email', () => {
+    expect(isExistingAccountSignup({ identities: [] })).toBe(true)
+  })
+  it('does not flag a genuinely new sign-up or a missing user', () => {
+    expect(isExistingAccountSignup({ identities: [{ provider: 'email' }] })).toBe(false)
+    expect(isExistingAccountSignup(null)).toBe(false)
+    expect(isExistingAccountSignup({})).toBe(false)
   })
 })

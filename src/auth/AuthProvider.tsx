@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { toAppError, unwrap } from '../lib/errors'
 import type { Enums, Tables } from '../lib/database.types'
 import { confirmationRedirectUrl } from '../lib/authRedirect'
+import { isExistingAccountSignup } from '../lib/otp'
 
 /** UI routing hint only; never trusted for authorization (roles live in the database). */
 export type SignupIntent = 'volunteer' | 'organization'
@@ -22,7 +23,7 @@ type AuthState = {
   isPlatformAdmin: boolean
   roleIn: (orgId: string) => Enums<'org_role'> | null
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, fullName: string, next?: string | null, intent?: SignupIntent) => Promise<{ needsConfirmation: boolean }>
+  signUp: (email: string, password: string, fullName: string, next?: string | null, intent?: SignupIntent) => Promise<{ needsConfirmation: boolean; alreadyRegistered: boolean }>
   verifySignupCode: (email: string, code: string) => Promise<void>
   resendConfirmation: (email: string) => Promise<void>
   signOut: () => Promise<void>
@@ -104,7 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           options: { data: { full_name: fullName, signup_intent: intent }, emailRedirectTo: confirmationRedirectUrl(window.location.origin, next) },
         })
         if (error) throw toAppError(error)
-        return { needsConfirmation: !data.session }
+        // Already-registered address: Supabase sends no email, so the UI must not say it did.
+        if (isExistingAccountSignup(data.user)) return { needsConfirmation: false, alreadyRegistered: true }
+        return { needsConfirmation: !data.session, alreadyRegistered: false }
       },
       async verifySignupCode(email, code) {
         if (!supabase) throw new Error('Not configured')

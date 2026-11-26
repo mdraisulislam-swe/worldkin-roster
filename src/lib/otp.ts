@@ -43,3 +43,12 @@ export function maskEmail(email: string): string {
   if (!domain) return email
   return `${user.slice(0, 2)}${'•'.repeat(Math.max(1, Math.min(6, user.length - 2)))}@${domain}`
 }
+
+/**
+ * Supabase answers a sign-up for an address that already has a confirmed account
+ * with HTTP 200 and an obfuscated user that has no identities, and sends no email
+ * (to prevent account discovery). Detect it so the UI never claims an email was sent.
+ */
+export function isExistingAccountSignup(user: { identities?: unknown[] | null } | null | undefined): boolean {
+  return !!user && Array.isArray(user.identities) && user.identities.length === 0
+}

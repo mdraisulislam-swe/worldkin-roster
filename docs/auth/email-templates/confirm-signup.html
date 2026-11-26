@@ -1,15 +1,20 @@
 <!--
   Supabase Auth → Email Templates → "Confirm signup"
-  Subject: Verify your email address | Worldkin Roster
+  Subject: Confirm your email | Worldkin Roster
   Variables used (all supported by Supabase Auth templates):
-    {{ .Token }}           6-digit one-time code generated and validated by Supabase Auth
-    {{ .Data.full_name }}  name the user typed at sign-up (user metadata); falls back to "there"
+    {{ .ConfirmationURL }} primary one-click confirmation link (returns to /auth/confirmed)
+    {{ .Token }}           6-digit backup code for /verify-email (same verification)
+    {{ .Data.full_name }}  name typed at sign-up (user metadata); falls back to "there"
     {{ .Email }}           the address being verified
-    {{ .ConfirmationURL }} one-click fallback link (same verification, kept for compatibility)
-  Contains no secrets, no tokens other than the user's own one-time code.
+  Contains no secrets; the only token is the recipient's own one-time confirmation.
 -->
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirm your email</title>
+  </head>
   <body style="margin:0;padding:0;background:#f7f8f6;font-family:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#141a22;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f8f6;padding:32px 12px;">
       <tr>
@@ -31,33 +36,41 @@
                   Hello, {{ if .Data.full_name }}{{ .Data.full_name }}{{ else }}there{{ end }}!
                 </h1>
                 <p style="margin:0 0 12px 0;font-size:15px;line-height:1.6;color:#333b47;">
-                  Thank you for joining Worldkin Roster. To verify your email address and activate your account,
-                  please enter the verification code below.
+                  Someone (hopefully you) asked to create a Worldkin Roster account with
+                  <strong>{{ .Email }}</strong>. Confirm the address to activate the account.
                 </p>
-                <p style="margin:0 0 8px 0;font-size:13px;color:#5b6472;">Verifying: {{ .Email }}</p>
               </td>
             </tr>
             <tr>
-              <td align="center" style="padding:16px 32px;">
-                <div style="display:inline-block;padding:14px 22px;border:1px solid #d5ece7;background:#eef7f5;border-radius:10px;font-size:32px;letter-spacing:10px;font-weight:700;color:#0c4a45;font-family:Consolas,Menlo,monospace;">{{ .Token }}</div>
-                <p style="margin:12px 0 0 0;font-size:13px;color:#5b6472;">This code expires in 60 minutes and can be used only once.</p>
+              <td align="center" style="padding:12px 32px 8px 32px;">
+                <a href="{{ .ConfirmationURL }}"
+                   style="display:inline-block;background:#0f5e57;color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;padding:13px 28px;border-radius:8px;">
+                  Confirm my email
+                </a>
               </td>
             </tr>
             <tr>
-              <td style="padding:0 32px 8px 32px;">
-                <p style="margin:0 0 12px 0;font-size:14px;line-height:1.6;color:#333b47;">
-                  <strong>Keep this code private.</strong> Worldkin Roster staff will never ask you for it.
-                  If you did not create an account, you can safely ignore this email.
+              <td style="padding:12px 32px 0 32px;">
+                <p style="margin:0 0 6px 0;font-size:13px;line-height:1.6;color:#5b6472;">
+                  Button not working? Copy this link into your browser:
                 </p>
+                <p style="margin:0 0 16px 0;font-size:12px;line-height:1.5;word-break:break-all;">
+                  <a href="{{ .ConfirmationURL }}" style="color:#0f5e57;">{{ .ConfirmationURL }}</a>
+                </p>
+                <p style="margin:0 0 6px 0;font-size:13px;line-height:1.6;color:#5b6472;">
+                  Or enter this code on the "Verify your email" page:
+                </p>
+                <p style="margin:0 0 16px 0;font-size:24px;letter-spacing:6px;font-weight:700;color:#0c4a45;font-family:Consolas,Menlo,monospace;">{{ .Token }}</p>
                 <p style="margin:0 0 16px 0;font-size:13px;line-height:1.6;color:#5b6472;">
-                  Trouble with the code? <a href="{{ .ConfirmationURL }}" style="color:#0f5e57;">Verify with one click instead</a>.
+                  The link and code expire after 60 minutes and work only once. Never share them.
+                  If you did not request this account, you can ignore this email — nothing will be activated.
                 </p>
               </td>
             </tr>
             <tr>
               <td style="padding:16px 32px 28px 32px;border-top:1px solid #eef0ee;">
-                <p style="margin:0;font-size:14px;color:#333b47;">Warm regards,<br />The Worldkin Roster team</p>
-                <p style="margin:10px 0 0 0;font-size:13px;font-style:italic;color:#0f5e57;">Everyone is kin.</p>
+                <p style="margin:0;font-size:14px;color:#333b47;">The Worldkin Roster team</p>
+                <p style="margin:6px 0 0 0;font-size:12px;color:#8a929c;">worldkin-roster.vercel.app</p>
               </td>
             </tr>
           </table>
