@@ -11,6 +11,7 @@ import { toAppError } from '../lib/errors'
 import { useNow } from '../lib/useNow'
 import { CompensationBadge, OrgLogo } from '../components/cards'
 import { Button, CapacityMeter, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select } from '../components/ui'
+import { Icon } from '../components/Icon'
 
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' })
 const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
@@ -21,33 +22,30 @@ function place(e: PublicEvent) {
   return [o.city, o.country_code].filter(Boolean).join(', ') || MODE_LABELS[o.mode]
 }
 
-function VerifiedOrg({ e }: { e: PublicEvent }) {
-  const org = e.opportunities?.organizations
-  if (!org) return null
-  return (
-    <span className="text-sm text-ink-700">
-      {org.name}{org.status === 'verified' && <span className="ml-1 text-xs font-medium text-emerald-800">✓ verified</span>}
-    </span>
-  )
-}
 
-function EventRow({ e, showDay }: { e: PublicEvent; showDay?: boolean }) {
+/** Prototype "eventRow": date tile (LIVE NOW while running), title, organizer · place · time, pay badge, chevron. */
+function EventRow({ e, live = false }: { e: PublicEvent; live?: boolean }) {
   const o = e.opportunities!
+  const org = o.organizations
   return (
     <li>
-      <Link to={`/events/${e.id}`} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-black/10 bg-white p-4 hover:border-brand-600 focus-visible:outline-2 focus-visible:outline-brand-600">
-        <div className="flex min-w-0 gap-3">
-          <div className="w-16 shrink-0 text-sm">
-            {showDay && <p className="text-xs uppercase tracking-wide text-ink-500">{dayFmt.format(new Date(e.starts_at))}</p>}
-            <p className="font-semibold tabular-nums text-ink-900">{timeFmt.format(new Date(e.starts_at))}</p>
-          </div>
-          <div className="min-w-0">
-            <p className="font-semibold text-ink-900">{eventTitle(e)}</p>
-            <p className="mt-0.5"><VerifiedOrg e={e} /></p>
-            <p className="mt-1 text-xs text-ink-500">{CAUSE_LABELS[o.cause]} · {place(e)}</p>
-          </div>
-        </div>
-        <CompensationBadge type={o.compensation_type} />
+      <Link to={`/events/${e.id}`} className="flex items-center gap-4 rounded-xl border border-neutral-100 bg-white p-4 shadow-[0_1px_2px_rgba(20,26,34,0.04)] transition-colors hover:border-brand-600 sm:p-5">
+        <span className={`flex min-w-[72px] shrink-0 flex-col items-center rounded-[10px] px-2 py-2 text-center ${live ? 'bg-emerald-50' : 'bg-brand-50'}`}>
+          {live
+            ? <span className="text-xs font-bold text-emerald-800">LIVE NOW</span>
+            : <><span className="text-xs font-semibold uppercase text-brand-700">{dayFmt.format(new Date(e.starts_at))}</span>
+                <span className="font-display text-sm font-bold tabular-nums text-ink-900">{timeFmt.format(new Date(e.starts_at))}</span></>}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="font-semibold text-ink-900">{eventTitle(e)}</span>
+          <span className="text-xs text-ink-500">
+            {org?.name}{org?.status === 'verified' && <span className="ml-1 inline-flex align-[-2px] text-brand-700" title="Verified by Worldkin"><Icon name="shield-check" size={13} /><span className="sr-only"> verified organization</span></span>}
+            {' · '}{place(e)} · {timeFmt.format(new Date(e.starts_at))}–{timeFmt.format(new Date(e.ends_at))}
+          </span>
+          <span className="text-xs text-ink-500">{CAUSE_LABELS[o.cause]}</span>
+        </span>
+        <span className="hidden sm:inline-flex"><CompensationBadge type={o.compensation_type} /></span>
+        <Icon name="chevron-right" size={18} className="text-ink-500" />
       </Link>
     </li>
   )
@@ -68,9 +66,9 @@ export function EventsPage() {
   const filtered = !!(cause || mode || comp)
 
   return (
-    <>
-      <PageHeader title="Events" subtitle="Upcoming shifts and activities from verified organizations. Open any event to join or apply." />
-      <Card className="mb-6">
+    <div className="flex flex-col gap-6 [&>*:first-child]:mb-0">
+      <PageHeader title="Events" subtitle="Shifts and activities from verified organizations. Open an event to join or apply." />
+      <Card>
         <div className="grid gap-3 sm:grid-cols-3">
           <Select label="Cause" value={cause} onChange={(e) => setFilter('cause', e.currentTarget.value)}
             options={[{ value: '', label: 'All causes' }, ...Constants.public.Enums.cause_category.map((c) => ({ value: c, label: CAUSE_LABELS[c] }))]} />
@@ -79,24 +77,24 @@ export function EventsPage() {
           <Select label="Compensation" value={comp} onChange={(e) => setFilter('compensation', e.currentTarget.value)}
             options={[{ value: '', label: 'Any' }, ...COMPENSATION_TYPES.map((c) => ({ value: c, label: COMPENSATION_LABELS[c] }))]} />
         </div>
-        {filtered && <Button variant="ghost" className="mt-3" onClick={() => setParams(new URLSearchParams(), { replace: true })}>Clear filters</Button>}
+        {filtered && <Button size="sm" variant="ghost" className="mt-3" onClick={() => setParams(new URLSearchParams(), { replace: true })}>Clear filters</Button>}
       </Card>
 
       {upcomingQ.isPending && <LoadingState label="Loading events" />}
       {upcomingQ.isError && <ErrorState message={toAppError(upcomingQ.error).message} onRetry={() => upcomingQ.refetch()} />}
 
       {ongoing.length > 0 && (
-        <section aria-labelledby="ongoing-h" className="mb-8">
-          <h2 id="ongoing-h" className="mb-3 flex items-center gap-2 text-lg font-semibold">
-            <span aria-hidden className="h-2 w-2 rounded-full bg-emerald-600" />Happening now
+        <section aria-labelledby="ongoing-h">
+          <h2 id="ongoing-h" className="mb-4 flex items-center gap-2 text-xl font-semibold">
+            <span aria-hidden className="h-2 w-2 rounded-full bg-natural-500" />Happening now
           </h2>
-          <ul className="flex flex-col gap-2">{ongoing.map((e) => <EventRow key={e.id} e={e} />)}</ul>
+          <ul className="flex flex-col gap-3">{ongoing.map((e) => <EventRow key={e.id} e={e} live />)}</ul>
         </section>
       )}
 
       {upcomingQ.data && (
-        <section aria-labelledby="upcoming-h" className="mb-10">
-          <h2 id="upcoming-h" className="mb-3 text-lg font-semibold">Upcoming <span className="text-sm font-normal text-ink-500">· next 60 days</span></h2>
+        <section aria-labelledby="upcoming-h">
+          <h2 id="upcoming-h" className="mb-4 text-xl font-semibold">Upcoming <span className="text-sm font-normal text-ink-500">· next 60 days</span></h2>
           {upcoming.length === 0 ? (
             <EmptyState title={filtered ? 'No upcoming events match these filters' : 'No upcoming events yet'}>
               {filtered ? 'Try clearing a filter.' : <>New events appear here as verified organizations schedule them. <Link className="text-brand-700 underline" to="/explore">Explore opportunities</Link></>}
@@ -106,7 +104,7 @@ export function EventsPage() {
               {groupByDay(upcoming, (e) => e.starts_at, now).map((day) => (
                 <div key={day.key}>
                   <h3 className="mb-2 text-sm font-semibold text-ink-700">{day.label}</h3>
-                  <ul className="flex flex-col gap-2">{day.items.map((e) => <EventRow key={e.id} e={e} />)}</ul>
+                  <ul className="flex flex-col gap-3">{day.items.map((e) => <EventRow key={e.id} e={e} />)}</ul>
                 </div>
               ))}
             </div>
@@ -116,12 +114,12 @@ export function EventsPage() {
 
       {recent.length > 0 && (
         <section aria-labelledby="recent-h">
-          <h2 id="recent-h" className="mb-1 text-lg font-semibold">Recently held</h2>
+          <h2 id="recent-h" className="mb-1 text-xl font-semibold">Recently held</h2>
           <p className="mb-3 text-sm text-ink-500">Scheduled events from the last 60 days that were not cancelled. Attendance is verified separately by each organization.</p>
-          <ul className="flex flex-col gap-2">{recent.map((e) => <EventRow key={e.id} e={e} showDay />)}</ul>
+          <ul className="flex flex-col gap-3">{recent.map((e) => <EventRow key={e.id} e={e} />)}</ul>
         </section>
       )}
-    </>
+    </div>
   )
 }
 
@@ -197,7 +195,7 @@ export function EventDetailPage() {
       {others.length > 0 && (
         <section aria-labelledby="more-h" className="mt-8">
           <h2 id="more-h" className="mb-3 text-lg font-semibold">More from {org?.name ?? 'this organization'}</h2>
-          <ul className="flex flex-col gap-2">{others.map((x) => <EventRow key={x.id} e={x} showDay />)}</ul>
+          <ul className="flex flex-col gap-3">{others.map((x) => <EventRow key={x.id} e={x} />)}</ul>
         </section>
       )}
     </>
