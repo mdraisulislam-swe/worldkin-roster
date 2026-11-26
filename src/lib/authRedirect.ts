@@ -64,3 +64,16 @@ export function authRedirectMessage(err: AuthRedirectError): { title: string; me
   }
   return { title: 'We could not confirm your email', message: 'Please try again, or request a new verification code below.', canResend: true }
 }
+
+/**
+ * New-password rules for the reset form (same limits as sign-up: 8–72
+ * characters, the bcrypt maximum Supabase accepts). Returns field errors.
+ */
+export function newPasswordErrors(password: string, confirm: string): Record<string, string> {
+  const errs: Record<string, string> = {}
+  if (password.length < 8) errs.password = 'Password must be at least 8 characters'
+  else if (password.length > 72) errs.password = 'Password is too long'
+  else if (!password.trim()) errs.password = 'Password cannot be only spaces'
+  if (confirm !== password) errs.confirm = 'Passwords do not match'
+  return errs
+}

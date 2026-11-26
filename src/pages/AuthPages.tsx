@@ -5,7 +5,7 @@ import { Alert, Button, Card, LoadingState, PasswordField, TextField } from '../
 import { OTP_LENGTH, clearPendingSignup, cooldownLeft, isCompleteOtp, maskEmail, normalizeOtp, readPendingSignup, savePendingSignup } from '../lib/otp'
 import { useNow } from '../lib/useNow'
 import { toAppError } from '../lib/errors'
-import { RESET_PATH, authRedirectMessage, hasAuthFragment, readAuthRedirectError, safeNext, type AuthRedirectError } from '../lib/authRedirect'
+import { RESET_PATH, authRedirectMessage, newPasswordErrors, hasAuthFragment, readAuthRedirectError, safeNext, type AuthRedirectError } from '../lib/authRedirect'
 import { fieldErrors, signInSchema, signUpSchema } from '../lib/validation'
 import { supabase } from '../lib/supabase'
 import { OtpInput } from '../components/OtpInput'
@@ -340,10 +340,7 @@ export function ResetPasswordPage() {
     const f = new FormData(e.currentTarget)
     const password = String(f.get('password') ?? '')
     const confirm = String(f.get('confirm') ?? '')
-    const errs: Record<string, string> = {}
-    if (password.length < 8) errs.password = 'Password must be at least 8 characters'
-    else if (password.length > 72) errs.password = 'Password is too long'
-    if (confirm !== password) errs.confirm = 'Passwords do not match'
+    const errs = newPasswordErrors(password, confirm)
     setErrors(errs)
     if (Object.keys(errs).length || !supabase) return
     setBusy(true); setFormError(null)
