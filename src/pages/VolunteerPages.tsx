@@ -129,9 +129,17 @@ export function NotificationsPage() {
   const uid = session!.user.id
   const qc = useQueryClient()
   const q = useQuery({ queryKey: ['notifications', uid], queryFn: () => getNotifications(uid) })
+  const [markError, setMarkError] = useState<string | null>(null)
+  const refreshCounts = () => { void qc.invalidateQueries({ queryKey: ['notifications'] }); void qc.invalidateQueries({ queryKey: ['unread'] }) }
   const markAll = useMutation({
     mutationFn: () => markNotificationsRead(uid),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['notifications'] }); void qc.invalidateQueries({ queryKey: ['unread'] }) },
+    onSuccess: () => { setMarkError(null); refreshCounts() },
+    onError: (e) => setMarkError(toAppError(e).message),
+  })
+  // Opening a notification marks only that one as read (own rows only; RLS allows updating read_at).
+  const markOne = useMutation({
+    mutationFn: (id: string) => markNotificationsRead(uid, [id]),
+    onSuccess: refreshCounts,
   })
   const unread = (q.data ?? []).filter((n) => !n.read_at).length
   return (
@@ -139,9 +147,10 @@ export function NotificationsPage() {
       <PageHeader title="Notifications" subtitle="Decisions, offers, promotions and verified hours."
         actions={unread > 0 ? <Button variant="secondary" busy={markAll.isPending} onClick={() => markAll.mutate()}>Mark all as read</Button> : undefined} />
       <VolunteerNav />
+      <div aria-live="polite">{markError && <div className="mb-4"><Alert tone="error">{markError}</Alert></div>}</div>
       {q.isPending && <LoadingState />}
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}
-      {q.data && q.data.length === 0 && <EmptyState title="No notifications yet" />}
+      {q.data && q.data.length === 0 && <EmptyState title="No notifications yet">Updates about applications, offers, waitlists and verified hours will appear here.</EmptyState>}
       {q.data && q.data.length > 0 && (
         <ul className="flex flex-col gap-2">
           {q.data.map((n) => (
@@ -152,7 +161,7 @@ export function NotificationsPage() {
                   <span className="text-xs text-ink-500">{formatDateTime(n.created_at)}</span>
                 </div>
                 {n.body && <p className="mt-1 text-sm text-ink-700">{n.body}</p>}
-                {n.link && <Link to={n.link} className="mt-1 inline-block text-sm text-brand-700 underline">Open</Link>}
+                {n.link && <Link to={n.link} onClick={() => { if (!n.read_at) markOne.mutate(n.id) }} className="mt-1 inline-block text-sm text-brand-700 underline">Open</Link>}
               </Card>
             </li>
           ))}
