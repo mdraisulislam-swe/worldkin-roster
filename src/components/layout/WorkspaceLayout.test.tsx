@@ -6,14 +6,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 // Auth state is mocked per test; the data layer is mocked so no network or Supabase client is created.
 const auth = vi.hoisted(() => ({ value: {} as Record<string, unknown> }))
 vi.mock('../../auth/AuthProvider', () => ({ useAuth: () => auth.value }))
-vi.mock('../../lib/platform', () => ({ getUnreadCount: vi.fn(async () => 0) }))
+vi.mock('../../lib/platform', () => ({
+  getUnreadCount: vi.fn(async () => 0), getMyApplications: vi.fn(async () => []),
+  getOrgApplications: vi.fn(async () => []), getAdminOverview: vi.fn(async () => null),
+}))
 
-import { OrgWorkspace, VolunteerWorkspace } from './WorkspaceLayout'
+import { AdminWorkspace, OrgWorkspace, VolunteerWorkspace } from './WorkspaceLayout'
 
 type M = { org_id: string; role: 'org_admin' | 'coordinator'; organization: { name: string; slug: string; status: string } }
 function setAuth(memberships: M[], isPlatformAdmin = false) {
   auth.value = {
-    session: { user: { id: 'u1' } }, profile: { full_name: 'Test Volunteer' }, memberships, isPlatformAdmin,
+    loading: false, signOut: vi.fn(), session: { user: { id: 'u1' } }, profile: { full_name: 'Test Volunteer' }, memberships, isPlatformAdmin,
     roleIn: (id: string) => memberships.find((m) => m.org_id === id)?.role ?? null,
   }
 }
@@ -29,6 +32,9 @@ function render(path: string) {
             <Route index element={<p>PAGE</p>} />
             <Route path="profile" element={<p>PAGE</p>} />
             <Route path="calendar" element={<p>PAGE</p>} />
+          </Route>
+          <Route path="/admin" element={<AdminWorkspace />}>
+            <Route index element={<p>PAGE</p>} />
           </Route>
           <Route path="/org/:orgId" element={<OrgWorkspace />}>
             <Route index element={<p>PAGE</p>} />
@@ -76,7 +82,7 @@ describe('OrgWorkspace', () => {
     const html = render('/org/o1/team')
     for (const p of ['/org/o1', '/org/o1/applications', '/org/o1/settings', '/org/o1/team', '/org/o1/audit']) expect(html).toContain(`href="${p}"`)
     expect(html).toContain('Sample Org')
-    expect(html).toContain('Admin')
+    expect(html).toContain('Organization admin')
   })
 
   it('hides admin-only sections from coordinators', () => {
@@ -98,5 +104,42 @@ describe('OrgWorkspace', () => {
     expect(pending).toContain('Awaiting verification')
     setAuth([org('org_admin', 'verified')])
     expect(render('/org/o1')).toContain('href="/organizations/sample-org"')
+  })
+})
+
+describe('workspace app shell', () => {
+  it('has one main landmark, a sidebar, a top bar with the bell, and Sign out', () => {
+    setAuth([])
+    const html = render('/me/calendar')
+    expect(html.match(/<main /g)?.length).toBe(1)
+    expect(html).toContain('id="main"')
+    expect(html).toContain('aria-label="Volunteer dashboard sidebar"')
+    expect(html).toContain('href="/me/notifications"')
+    expect(html).toContain('Sign out')
+    expect(html).toContain('Find opportunities')
+    expect(html).toContain('aria-label="Open menu"')
+    expect(html).toContain('aria-label="Volunteer dashboard quick links"')
+  })
+
+  it('shows the user name and role, and the page name in the top bar', () => {
+    setAuth([])
+    const html = render('/me/calendar')
+    expect(html).toContain('Test Volunteer')
+    expect(html).toMatch(/>Calendar</)
+  })
+
+  it('admin shell: dark sidebar with every admin section, no Find opportunities', () => {
+    setAuth([], true)
+    const html = render('/admin')
+    for (const p of ['/admin', '/admin/organizations', '/admin/users', '/admin/opportunities', '/admin/complaints', '/admin/feedback', '/admin/audit']) expect(html).toContain('href="' + p + '"')
+    expect(html).toContain('bg-forest-900')
+    expect(html).not.toContain('Find opportunities')
+  })
+
+  it('organization shell shows the organization block and the role', () => {
+    setAuth([org('coordinator')])
+    const html = render('/org/o1')
+    expect(html).toContain('Sample Org')
+    expect(html).toContain('Coordinator')
   })
 })

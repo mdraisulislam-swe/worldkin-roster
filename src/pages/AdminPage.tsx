@@ -7,7 +7,7 @@ import { toAppError } from '../lib/errors'
 import { CAUSE_LABELS, formatDateTime } from '../lib/format'
 import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge } from '../components/ui'
 import { useDialog } from '../components/dialog'
-import { AdminNav, OrgVerificationDetails } from './AdminPlatformPages'
+import { OrgVerificationDetails } from './AdminPlatformPages'
 
 type Decision = Enums<'org_status'>
 /** Mirrors the database state machine (review_organization). */
@@ -38,7 +38,6 @@ export function AdminPage() {
   return (
     <>
       <PageHeader title="Organization verification" subtitle="Review registration details and documents before an organization can publish opportunities." />
-      <AdminNav />
       <div className="mb-4 max-w-xs">
         <Select label="Show" value={filter} onChange={(e) => setFilter(e.currentTarget.value as Decision | '')}
           options={[{ value: 'pending', label: 'Pending review' }, { value: 'verified', label: 'Verified' }, { value: 'suspended', label: 'Suspended' }, { value: 'rejected', label: 'Rejected' }, { value: '', label: 'All' }]} />

@@ -6,15 +6,19 @@ import { useQuery } from '@tanstack/react-query'
 import { getUnreadCount } from '../../lib/platform'
 import { LoadingState } from '../ui'
 import { Icon } from '../Icon'
+import { workspaceChrome } from '../../lib/workspace'
 
 const linkCls = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg px-3 py-2 text-[14.5px] font-medium ${isActive ? 'bg-brand-50 text-brand-700' : 'text-ink-700 hover:bg-neutral-100'}`
 
 export function AppShell() {
-  const { session, profile, memberships, isPlatformAdmin, signOut } = useAuth()
+  const { loading, session, profile, memberships, isPlatformAdmin, signOut } = useAuth()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  // Workspace pages (volunteer, organization, admin) draw their own app shell; see lib/workspace.ts.
+  const chrome = workspaceChrome({ pathname, loading, signedIn: !!session, isPlatformAdmin, memberOrgIds: memberships.map((m) => m.org_id) })
+  const workspace = chrome !== 'public'
   const uid = session?.user.id
   // Unread count: small HEAD count query, refreshed every minute and on navigation.
   const unreadQ = useQuery({ queryKey: ['unread', uid, pathname], queryFn: () => getUnreadCount(uid!), enabled: !!uid, refetchInterval: 60_000, staleTime: 15_000 })
@@ -31,7 +35,8 @@ export function AppShell() {
   // and screen-reader users start at the top of it (not on the old link).
   useEffect(() => {
     if (firstRender.current) { firstRender.current = false; return }
-    mainRef.current?.focus({ preventScroll: true })
+    // Workspace pages render their own <main id="main"> inside the shell.
+    ;(document.getElementById('main') ?? mainRef.current)?.focus({ preventScroll: true })
     window.scrollTo(0, 0)
   }, [pathname])
   // A confirmation link that fails (expired / already used) may land on any page,
@@ -76,7 +81,7 @@ export function AppShell() {
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2 focus:shadow">
         Skip to main content
       </a>
-      <header className="sticky top-0 z-40 border-b border-neutral-100 bg-surface/90 backdrop-blur-md">
+      {!workspace && <header className="sticky top-0 z-40 border-b border-neutral-100 bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link to="/" className="flex shrink-0 items-center gap-2.5 font-display text-lg font-bold text-forest-900">
             <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-brand-700 text-white"><Icon name="users" size={18} /></span>
@@ -126,18 +131,26 @@ export function AppShell() {
             )}
           </nav>
         )}
-      </header>
+      </header>}
       {!online && (
         <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">
           You are offline. You can keep browsing what is loaded; changes will need a connection. The page updates automatically when you are back online.
         </div>
       )}
-      <main id="main" ref={mainRef} tabIndex={-1} className="outline-none mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
-        <Suspense fallback={<LoadingState />}>
-          <Outlet />
-        </Suspense>
-      </main>
-      <footer className="bg-forest-900 text-sage-200">
+      {workspace ? (
+        <section ref={mainRef} className="flex flex-1 flex-col">
+          <Suspense fallback={<LoadingState />}>
+            <Outlet />
+          </Suspense>
+        </section>
+      ) : (
+        <main id="main" ref={mainRef} tabIndex={-1} className="outline-none mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+          <Suspense fallback={<LoadingState />}>
+            <Outlet />
+          </Suspense>
+        </main>
+      )}
+      {!workspace && <footer className="bg-forest-900 text-sage-200">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 text-sm sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
           <div>
             <p className="flex items-center gap-2 font-semibold text-white"><img src="/favicon.svg" alt="" width={20} height={20} />Worldkin Roster</p>
@@ -163,7 +176,7 @@ export function AppShell() {
         <div className="border-t border-white/10">
           <p className="mx-auto max-w-6xl px-4 py-4 text-xs text-sage-200/80 sm:px-6">Worldkin Roster · HACK THE VIBE 2026 · World Problem Solver track</p>
         </div>
-      </footer>
+      </footer>}
     </div>
   )
 }

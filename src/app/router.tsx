@@ -1,7 +1,7 @@
 import { lazy } from 'react'
 import { createBrowserRouter, redirect } from 'react-router'
 import { AppShell } from '../components/layout/AppShell'
-import { OrgWorkspace, VolunteerWorkspace } from '../components/layout/WorkspaceLayout'
+import { AdminWorkspace, OrgWorkspace, VolunteerWorkspace } from '../components/layout/WorkspaceLayout'
 import { RequireAuth, RequireOrgRole, RequirePlatformAdmin } from '../auth/guards'
 import { HomePage } from '../pages/HomePage'
 import { NotFoundPage } from '../pages/NotFoundPage'
@@ -111,13 +111,20 @@ export const router = createBrowserRouter([
         ],
       },
 
-      { path: 'admin', element: <RequireAuth><RequirePlatformAdmin><AdminOverviewPage /></RequirePlatformAdmin></RequireAuth> },
-      { path: 'admin/organizations', element: <RequireAuth><RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin></RequireAuth> },
-      { path: 'admin/users', element: <RequireAuth><RequirePlatformAdmin><AdminUsersPage /></RequirePlatformAdmin></RequireAuth> },
-      { path: 'admin/opportunities', element: <RequireAuth><RequirePlatformAdmin><AdminOpportunitiesPage /></RequirePlatformAdmin></RequireAuth> },
-      { path: 'admin/complaints', element: <RequireAuth><RequirePlatformAdmin><AdminComplaintsPage /></RequirePlatformAdmin></RequireAuth> },
-      { path: 'admin/feedback', element: <RequireAuth><RequirePlatformAdmin><AdminFeedbackPage /></RequirePlatformAdmin></RequireAuth> },
-      { path: 'admin/audit', element: <RequireAuth><RequirePlatformAdmin><AuditPage /></RequirePlatformAdmin></RequireAuth> },
+      // Platform administration: a layout route behind the same guards. URLs are unchanged.
+      {
+        path: 'admin',
+        element: <RequireAuth><RequirePlatformAdmin><AdminWorkspace /></RequirePlatformAdmin></RequireAuth>,
+        children: [
+          { index: true, element: <AdminOverviewPage /> },
+          { path: 'organizations', element: <AdminPage /> },
+          { path: 'users', element: <AdminUsersPage /> },
+          { path: 'opportunities', element: <AdminOpportunitiesPage /> },
+          { path: 'complaints', element: <AdminComplaintsPage /> },
+          { path: 'feedback', element: <AdminFeedbackPage /> },
+          { path: 'audit', element: <AuditPage /> },
+        ],
+      },
 
       { path: '*', element: <NotFoundPage /> },
     ],

@@ -9,21 +9,9 @@ import {
 import { toAppError } from '../lib/errors'
 import { formatDateTime } from '../lib/format'
 import { useDialog } from '../components/dialog'
-import { DashboardNav } from '../components/DashboardNav'
 import { DocLink } from './OrgPlatformPages'
 import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, Stat, StatusBadge, TextField } from '../components/ui'
 
-export function AdminNav() {
-  return <DashboardNav label="Platform administration" items={[
-    { to: '/admin', label: 'Overview', end: true, icon: 'home' },
-    { to: '/admin/organizations', label: 'Organization verification', icon: 'shield-check' },
-    { to: '/admin/users', label: 'Users', icon: 'users' },
-    { to: '/admin/opportunities', label: 'Opportunity moderation', icon: 'briefcase' },
-    { to: '/admin/complaints', label: 'Complaints', icon: 'flag' },
-    { to: '/admin/feedback', label: 'Feedback', icon: 'heart' },
-    { to: '/admin/audit', label: 'Audit log', icon: 'list' },
-  ]} />
-}
 
 type Notice = { tone: 'success' | 'error'; text: string } | null
 
@@ -32,7 +20,6 @@ export function AdminOverviewPage() {
   return (
     <>
       <PageHeader title="Platform administration" subtitle="Live platform statistics. Every action here is enforced and audited by the database." />
-      <AdminNav />
       {q.isPending && <LoadingState />}
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}
       {q.data && (
@@ -89,7 +76,6 @@ export function AdminUsersPage() {
   return (
     <>
       <PageHeader title="Users" subtitle="Volunteers and organization staff. Platform admin roles are managed only by the operator, never here." />
-      <AdminNav />
       <form className="mb-4 flex max-w-lg items-end gap-2" role="search" onSubmit={(e) => { e.preventDefault(); const v = String(new FormData(e.currentTarget).get('q') ?? '').trim(); setParams(v ? { q: v } : {}) }}>
         <div className="flex-1"><TextField label="Search name or email" name="q" defaultValue={query} /></div>
         <Button type="submit">Search</Button>
@@ -153,7 +139,6 @@ export function AdminOpportunitiesPage() {
   return (
     <>
       <PageHeader title="Opportunity moderation" subtitle="Close misleading, unsafe or non-compliant listings. Closing is final for the organization." />
-      <AdminNav />
       <div className="mb-4 max-w-xs"><Select label="Show" value={status} onChange={(e) => setStatus(e.currentTarget.value as 'published' | 'closed')} options={[{ value: 'published', label: 'Published' }, { value: 'closed', label: 'Closed' }]} /></div>
       <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
       {q.isPending && <LoadingState />}
@@ -194,7 +179,6 @@ export function AdminComplaintsPage() {
   return (
     <>
       <PageHeader title="Complaints" subtitle="Private reports from volunteers and organizations. Organizations never see complaints about them." />
-      <AdminNav />
       <div className="mb-4 max-w-xs"><Select label="Show" value={status} onChange={(e) => setStatus(e.currentTarget.value as ComplaintStatus | '')}
         options={[{ value: 'open', label: 'Open' }, { value: 'in_review', label: 'In review' }, { value: 'resolved', label: 'Resolved' }, { value: 'dismissed', label: 'Dismissed' }, { value: '', label: 'All' }]} /></div>
       <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
@@ -245,7 +229,6 @@ export function AdminFeedbackPage() {
   return (
     <>
       <PageHeader title="Feedback moderation" subtitle="Public reviews from verified participants. Hide abusive or off-topic reviews." />
-      <AdminNav />
       <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
       {q.isPending && <LoadingState />}
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}

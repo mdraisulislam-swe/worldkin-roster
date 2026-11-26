@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router'
-import { AdminNav } from './AdminPlatformPages'
 import { getAuditLog } from '../lib/api'
 import { toAppError } from '../lib/errors'
 import { formatDateTime } from '../lib/format'
@@ -17,7 +16,6 @@ export function AuditPage() {
   return (
     <>
       <PageHeader title="Audit log" subtitle={orgId ? 'Every change to this organization’s data, with who made it.' : 'Platform-wide change history.'} />
-      {!orgId && <AdminNav />}
       <p className="mb-4 text-sm text-ink-500">Latest 100 changes. Entries cannot be edited or deleted. "operator" means a change made directly by the platform owner.</p>
       {q.isPending && <LoadingState />}
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}

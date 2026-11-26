@@ -24,3 +24,13 @@ export function orgNav(orgId: string, isAdmin: boolean): NavItem[] {
     ] : []),
   ]
 }
+
+export const ADMIN_NAV: NavItem[] = [
+  { to: '/admin', label: 'Overview', end: true, icon: 'home' },
+  { to: '/admin/organizations', label: 'Organization verification', icon: 'shield-check' },
+  { to: '/admin/users', label: 'Users', icon: 'users' },
+  { to: '/admin/opportunities', label: 'Opportunity moderation', icon: 'briefcase' },
+  { to: '/admin/complaints', label: 'Complaints', icon: 'flag' },
+  { to: '/admin/feedback', label: 'Feedback', icon: 'heart' },
+  { to: '/admin/audit', label: 'Audit log', icon: 'list' },
+]
