@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { Fragment, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
@@ -7,13 +7,14 @@ import {
   markNotificationsRead, submitComplaint, submitFeedback, withdrawApplication, type MyApplication,
 } from '../lib/platform'
 import { toAppError } from '../lib/errors'
-import { CAUSE_LABELS, formatDateTime, formatShiftWindow } from '../lib/format'
+import { CAUSE_LABELS, formatDateTime, formatShiftWindow, timeAgo } from '../lib/format'
 import { useNow } from '../lib/useNow'
 import { useDialog } from '../components/dialog'
 import { Alert, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge, Tabs, TextArea, TextField } from '../components/ui'
 import { TABLE } from '../lib/table'
 import { APP_TABS, appTabOf, type AppTab } from '../lib/appTabs'
 import { Icon } from '../components/Icon'
+import { PIN_CLASS, notificationPin } from '../lib/notificationKinds'
 
 function hoursLeft(iso: string, now: number) {
   const ms = new Date(iso).getTime() - now
@@ -174,31 +175,54 @@ export function NotificationsPage() {
     onSuccess: refreshCounts,
   })
   const unread = (q.data ?? []).filter((n) => !n.read_at).length
+  const [tab, setTab] = useState<'all' | 'unread'>('all')
+  const nowN = useNow(60_000)
+  const shown = (q.data ?? []).filter((n) => tab === 'all' || !n.read_at)
   return (
-    <>
-      <PageHeader title="Notifications" subtitle="Decisions, offers, promotions and verified hours."
+    <div className="flex flex-col gap-6 [&>*:first-child]:mb-0">
+      <PageHeader title="Notifications" subtitle="Decisions, offers, waitlist promotions and verified hours."
         actions={unread > 0 ? <Button variant="secondary" busy={markAll.isPending} onClick={() => markAll.mutate()}>Mark all as read</Button> : undefined} />
-      <div aria-live="polite">{markError && <div className="mb-4"><Alert tone="error">{markError}</Alert></div>}</div>
+      <div aria-live="polite" className="empty:-mt-6">{markError && <Alert tone="error">{markError}</Alert>}</div>
       {q.isPending && <LoadingState />}
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && <EmptyState title="No notifications yet">Updates about applications, offers, waitlists and verified hours will appear here.</EmptyState>}
       {q.data && q.data.length > 0 && (
-        <ul className="flex flex-col gap-2">
-          {q.data.map((n) => (
-            <li key={n.id}>
-              <Card className={n.read_at ? '' : 'border-brand-600 bg-brand-50/40'}>
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <p className="font-medium">{!n.read_at && <span className="sr-only">Unread: </span>}{n.title}</p>
-                  <span className="text-xs text-ink-500">{formatDateTime(n.created_at)}</span>
-                </div>
-                {n.body && <p className="mt-1 text-sm text-ink-700">{n.body}</p>}
-                {n.link && <Link to={n.link} onClick={() => { if (!n.read_at) markOne.mutate(n.id) }} className="mt-1 inline-block text-sm text-brand-700 underline">Open</Link>}
-              </Card>
-            </li>
-          ))}
-        </ul>
+        <>
+          <Tabs label="Filter notifications" controls="notes-panel" value={tab} onChange={setTab}
+            tabs={[{ value: 'all', label: 'All' }, { value: 'unread', label: 'Unread', count: unread }]} />
+          <div id="notes-panel" role="tabpanel" aria-labelledby={`tab-notes-panel-${tab}`}>
+            {shown.length === 0 ? <p className="py-4 text-sm text-ink-500">You're all caught up.</p> : (
+              <ul className="overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-[0_1px_2px_rgba(20,26,34,0.04)]">
+                {shown.map((n) => {
+                  const [icon, tone] = notificationPin(n.kind)
+                  const row = (
+                    <>
+                      <span aria-hidden className={`grid h-9 w-9 shrink-0 place-items-center rounded-[10px] ${PIN_CLASS[tone]}`}><Icon name={icon} size={18} /></span>
+                      <span className="flex min-w-0 flex-1 flex-col gap-1">
+                        <span className={`text-sm ${n.read_at ? 'text-ink-900' : 'font-semibold text-ink-900'}`}>{!n.read_at && <span className="sr-only">Unread: </span>}{n.title}</span>
+                        {n.body && <span className="text-xs text-ink-500">{n.body}</span>}
+                      </span>
+                      <time dateTime={n.created_at} title={formatDateTime(n.created_at)} className="whitespace-nowrap text-xs text-ink-500">{timeAgo(n.created_at, nowN)}</time>
+                      {!n.read_at && <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-terracotta-700" />}
+                    </>
+                  )
+                  const cls = `flex items-start gap-4 border-b border-neutral-100 px-5 py-4 last:border-b-0 ${n.read_at ? '' : 'bg-[#f6fbf9]'}`
+                  return (
+                    <li key={n.id} className="border-b border-neutral-100 last:border-b-0">
+                      {n.link
+                        // Opening a notification marks only that one as read (own rows only; RLS allows updating read_at).
+                        ? <Link to={n.link} onClick={() => { if (!n.read_at) markOne.mutate(n.id) }} className={`${cls} border-b-0 hover:bg-[#fbfcfa]`}>{row}</Link>
+                        : <div className={`${cls} border-b-0`}>{row}</div>}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+          <p className="-mt-3 flex items-center gap-1.5 text-xs text-ink-500"><Icon name="info" size={12} />Opening a notification marks it as read. Email notifications are a separate, future capability.</p>
+        </>
       )}
-    </>
+    </div>
   )
 }
 
@@ -260,6 +284,8 @@ export function ComplaintsPage() {
 }
 
 // ------------------------------------------------------------------ participation history, feedback, certificates
+const issuedFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+
 export function ParticipationSection() {
   const qc = useQueryClient()
   const q = useQuery({ queryKey: ['my-participation'], queryFn: getMyParticipation })
@@ -274,27 +300,48 @@ export function ParticipationSection() {
   if (q.isError) return <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />
   if (q.data.length === 0) return null
   return (
-    <section aria-labelledby="hist-h" className="mx-auto mt-8 max-w-3xl print:hidden">
-      <h2 id="hist-h" className="mb-3 text-lg font-semibold">Participation history, feedback &amp; certificates</h2>
-      <div aria-live="polite">{notice && <div className="mb-3"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
-      <ul className="flex flex-col gap-2">
+    <section aria-labelledby="hist-h" className="flex flex-col gap-4 print:hidden">
+      <div>
+        <h2 id="hist-h" className="text-xl font-semibold">Certificates</h2>
+        <p className="text-sm text-ink-500">Issued automatically for each verified participation. You can also leave feedback for the organization.</p>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+        <Icon name="info" size={18} />
+        <span><strong>Public verification links</strong> (unique code / QR) are a planned feature — not active yet. Today a certificate can be printed by its owner.</span>
+      </div>
+      <div aria-live="polite" className="empty:-mt-4">{notice && <Alert tone={notice.tone}>{notice.text}</Alert>}</div>
+      <div className={TABLE.wrap}>
+        <table className={TABLE.table}>
+          <caption className="sr-only">Certificates</caption>
+          <thead className={TABLE.thead}>
+            <tr>
+              <th scope="col" className={TABLE.th}>Certificate</th>
+              <th scope="col" className={TABLE.th}>Issued</th>
+              <th scope="col" className={TABLE.th}>Hours</th>
+              <th scope="col" className={TABLE.th}>Status</th>
+              <th scope="col" className={TABLE.th}><span className="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody className={TABLE.tbody}>
         {q.data.map((p) => (
-          <li key={p.participation_id}>
-            <Card>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-medium">{p.opportunity_title}</p>
-                  <p className="text-sm text-ink-500">{p.org_name} · {formatShiftWindow(p.starts_at, p.ends_at)} · {Number(p.hours)} verified h</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link className="rounded-md border border-black/15 px-3 py-1.5 text-sm hover:bg-black/5" to={`/me/certificate/${p.participation_id}`}>Certificate</Link>
-                  {p.feedback_id
-                    ? <span className="self-center text-sm text-ink-500">Feedback given: {'★'.repeat(p.feedback_rating ?? 0)}</span>
-                    : <Button variant="secondary" onClick={() => setOpen(open === p.participation_id ? null : p.participation_id)} aria-expanded={open === p.participation_id}>Leave feedback</Button>}
-                </div>
-              </div>
+          <Fragment key={p.participation_id}>
+            <tr className={TABLE.tr}>
+              <td className={TABLE.td}>
+                <Link className="font-semibold text-brand-700 hover:underline" to={`/me/certificate/${p.participation_id}`}>{p.opportunity_title}</Link>
+                <p className="text-xs text-ink-500">{p.org_name}<span className="md:hidden"> · {formatShiftWindow(p.starts_at, p.ends_at)}</span></p>
+              </td>
+              <td className={`${TABLE.td} ${TABLE.hideSm} whitespace-nowrap`}>{issuedFmt.format(new Date(p.starts_at))}</td>
+              <td className={`${TABLE.td} whitespace-nowrap tabular-nums`}>{Number(p.hours)} h</td>
+              <td className={`${TABLE.td} ${TABLE.hideSm}`}><StatusBadge status="verified" /></td>
+              <td className={`${TABLE.td} ${TABLE.fullSm} text-right max-md:text-left`}>
+                {p.feedback_id
+                  ? <span className="text-sm text-ink-500">Feedback given: {'★'.repeat(p.feedback_rating ?? 0)}</span>
+                  : <Button size="sm" variant="secondary" onClick={() => setOpen(open === p.participation_id ? null : p.participation_id)} aria-expanded={open === p.participation_id}>Leave feedback</Button>}
+              </td>
+            </tr>
               {open === p.participation_id && (
-                <form className="mt-3 grid gap-3 sm:grid-cols-4" onSubmit={(e) => {
+              <tr className="border-t border-neutral-100 bg-[#fbfcfa] max-md:block"><td colSpan={5} className="px-4 py-4 max-md:block">
+                <form className="grid gap-3 sm:grid-cols-4" onSubmit={(e) => {
                   e.preventDefault()
                   const f = new FormData(e.currentTarget)
                   const comment = String(f.get('comment') ?? '').trim()
@@ -304,11 +351,13 @@ export function ParticipationSection() {
                   <div className="sm:col-span-3"><TextField label="Comment (optional, public)" name="comment" maxLength={1000} /></div>
                   <div className="sm:col-span-4"><Button type="submit" busy={fb.isPending}>Publish feedback</Button></div>
                 </form>
+              </td></tr>
               )}
-            </Card>
-          </li>
+          </Fragment>
         ))}
-      </ul>
+          </tbody>
+        </table>
+      </div>
     </section>
   )
 }
