@@ -61,12 +61,13 @@
 | **E05** | `#/a/disputes` | `/admin/complaints` | **VERIFIED (R3, styling)** | Status tabs, complaint cards, Start review / Resolve / Dismiss with a required response. The prototype's two-sided no-show dispute is NOT CONNECTED (labelled planned in the shift page). |
 | — | admin sidebar | `ADMIN_NAV` | **VERIFIED (R3)** | Labels aligned: User management, Content moderation, Feedback & reviews. Routes unchanged. |
 | E06 | `#/a/audit` | `/admin/audit` | VERIFIED | — |
+| A12 | `#/about` | — | **BLOCKED (R6)** | Needs owner content; requirement list in `docs/PROTOTYPE_COMPLETION_REPORT.md` §R6. Nothing invented. |
+| D09 | `#/o/reports` | — | NOT IMPLEMENTED (R6) | Needs agreed metrics and a reviewed read-only aggregate query. |
 | 09 | `#/system/states` | shared states | VERIFIED | — |
 | — | `#/404` | `NotFoundPage` | VERIFIED | — |
 
 ## Remaining (next batches)
 
-- **R6 Content:** A12, D09.
 - **NOT CONNECTED:** A08–A11, B03, E07.
 
 ## Photos (R5)
