@@ -77,7 +77,7 @@ flowchart LR
 
 | Sub-component (marks) | Status | Evidence | Missing / next action |
 |---|---|---|---|
-| 3 interconnected modules (6) | ✅ | Volunteer, organization and admin modules share applications → offers → shifts → attendance → record. **Live DB:** `docs/evidence/live_wk06/apps_run1–3.txt` (21/21 each, organization and volunteer actions). **Preview, real session (27 Nov):** volunteer and admin routes PASS | — |
+| 3 interconnected modules (6) | ✅ | Volunteer, organization and admin modules share applications → offers → shifts → attendance → record. **Live DB:** `docs/evidence/live_wk06/apps_run1–3.txt` (21/21 each, organization and volunteer actions). **Preview, real session:** volunteer 7/7 and admin 7/7 routes PASS on `a1419e1` (`dpl_G11u1…`, 2026-11-26 20:10 UTC) — `docs/evidence/preview_signed_in_smoke_2026-11-26.md`; not yet repeated on `2dfe9c5` | — |
 | End-to-end workflow (4) | 🟡 | The workflow passes end to end through the live API (apps runs ×3); a browser run is not recorded | One signed-in browser run on Production: apply → offer → accept → attend, with a demo organization admin account |
 | Meaningful features (2) | ✅ | Verification, compensation types, capacity/waitlist, passport and certificates, map of live listings (Preview smoke 27 Nov) | — |
 
