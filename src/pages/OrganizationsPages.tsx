@@ -27,7 +27,7 @@ export function OrganizationsPage() {
 
   return (
     <>
-      <PageHeader title="Organizations" subtitle="Every organization listed here was reviewed and verified by Worldkin administrators." />
+      <PageHeader title="Verified organizations" subtitle="NGOs, charities, community groups and university clubs reviewed by Worldkin administrators before they can publish." />
       <Card className="mb-6">
         <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" role="search" onSubmit={(e) => {
           e.preventDefault()
@@ -48,12 +48,13 @@ export function OrganizationsPage() {
       {q.data && q.data.rows.length > 0 && (
         <>
           <p className="mb-3 text-sm text-ink-500" aria-live="polite">{q.data.total} organization{q.data.total === 1 ? '' : 's'}</p>
-          <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{q.data.rows.map((o) => <li key={o.id}><OrgCardView o={o} /></li>)}</ul>
+          <ul className="grid gap-4 md:grid-cols-2">{q.data.rows.map((o) => <li key={o.id}><OrgCardView o={o} /></li>)}</ul>
           <nav aria-label="Pagination" className="mt-6 flex items-center gap-3">
             <Button variant="secondary" disabled={page <= 1} onClick={() => { params.set('page', String(page - 1)); setParams(params) }}>Previous</Button>
             <span className="text-sm text-ink-500">Page {page} of {totalPages}</span>
             <Button variant="secondary" disabled={page >= totalPages} onClick={() => { params.set('page', String(page + 1)); setParams(params) }}>Next</Button>
           </nav>
+          <p className="mt-6 rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900">Organizations awaiting verification are not listed publicly and cannot publish opportunities.</p>
         </>
       )}
     </>

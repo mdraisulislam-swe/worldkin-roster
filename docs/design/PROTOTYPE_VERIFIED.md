@@ -32,6 +32,14 @@
 | A06 | `#/events` | `/events` | VERIFIED | — |
 | B07 | `#/otp` | `/verify-email` | VERIFIED | — |
 | B07 | `#/recover` | `/forgot-password`, `/auth/reset` | VERIFIED | — |
+| **A01** | `#/home` | `/` | **VERIFIED (R4)** | Already matched (hero with prototype photo, search, two calls to action, impact row with real counts). No code change. Floating "next shift" chip on the photo NOT CONNECTED. |
+| **A03** | `#/opportunity` | `/opportunities/:id` | **VERIFIED (R4, with deviation)** | Header, badges, about / compensation / what-happens-next cards and right-hand shift column match the structure. Kept deviation: the right column lists every shift with its own Join button instead of one "Next shift" card (richer and already tested). Cover photo and related opportunities NOT CONNECTED. |
+| **A04** | `#/organizations` | `/organizations` | **VERIFIED (R4)** | Changed: "Verified organizations" title and subtitle, two-column cards, note that organizations awaiting verification are not listed. Filters (cause/type/country) kept. Ratings on cards NOT CONNECTED. |
+| A05 | `#/org` (organization profile) | `/organizations/:slug` | PARTIAL (R4) | Width sweep passes; two-column layout with opportunities. Trust sidebar details not re-compared. |
+| A07 | event detail | `/events/:id` | PARTIAL (R4) | Width sweep passes. Not re-compared side by side. |
+| **B01–B02** | `#/login/volunteer`, `#/login/org` | `/signin?as=volunteer`, `/signin?as=org` | **VERIFIED (R5)** | Matched: account-type eyebrow, "Welcome back", role-specific subtitle, Volunteer / Organization switch (links; keeps `next`), photo panel. Wording only: the same sign-in runs for both roles. "Keep me signed in" and demo-role chips NOT CONNECTED. |
+| **B04–B06** | `#/register` | `/join`, `/signup?as=…` | **VERIFIED (R5, with deviation)** | Role choice is a separate `/join` page (two cards) rather than a step inside the form; signup panels now show the prototype photo (`hero` volunteer / `team` organization). 3-step progress header NOT CONNECTED. |
+| B03 | `#/admin/login` | — | NOT CONNECTED | Admins use the normal sign-in; MFA is not built. |
 | C01 | `#/v/dashboard` | `/me` | VERIFIED | Recommended for you NOT CONNECTED |
 | C02–03 | `#/v/applications` | `/me/applications` | VERIFIED | — |
 | C04 | `#/v/calendar` | `/me/calendar` | VERIFIED | — |
@@ -58,7 +66,9 @@
 
 ## Remaining (next batches)
 
-- **R4 Public:** A01, A03, A04, A05, A07.
-- **R5 Auth:** B01, B02, B04–B06.
 - **R6 Content:** A12, D09.
 - **NOT CONNECTED:** A08–A11, B03, E07.
+
+## Photos (R5)
+
+Auth panels use two photos taken from the prototype itself (`data.js` keys `hero` and `team`, Unsplash, free licence). The home hero already uses the `hero` photo. They are decorative (`alt=""`) and hide if they fail to load. No other images were added.

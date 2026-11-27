@@ -65,6 +65,9 @@ export function SignInPage() {
   const [formError, setFormError] = useState<{ message: string; unconfirmed: boolean; email: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const next = safeNext(params.get('next'), '/dashboard')
+  // Wording only: both roles use the same sign-in; the workspace is chosen after sign-in.
+  const asOrg = params.get('as') === 'org' || params.get('as') === 'organization'
+  const roleHref = (role: 'volunteer' | 'org') => { const p = new URLSearchParams(params); p.set('as', role); return `/signin?${p.toString()}` }
   if (session) return <Navigate to={next} replace />
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -85,8 +88,14 @@ export function SignInPage() {
   }
 
   return (
-    <AuthFrame>
-      <h1 className="mb-6 text-2xl font-bold tracking-tight sm:text-3xl">Sign in</h1>
+    <AuthFrame photo={asOrg ? 'team' : 'hero'}>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">{asOrg ? 'Organization account' : 'Volunteer account'}</p>
+      <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Welcome back</h1>
+      <p className="mt-1 text-ink-500">{asOrg ? 'Sign in to manage your organization workspace.' : 'Sign in to see your shifts, offers and record.'}</p>
+      <nav aria-label="Account type" className="mb-6 mt-5 inline-flex rounded-lg bg-neutral-100 p-1 text-sm font-medium">
+        <Link to={roleHref('volunteer')} replace aria-current={asOrg ? undefined : 'page'} className={`rounded-md px-3 py-1.5 ${asOrg ? 'text-ink-500 hover:text-ink-900' : 'bg-white text-ink-900 shadow-sm'}`}>Volunteer</Link>
+        <Link to={roleHref('org')} replace aria-current={asOrg ? 'page' : undefined} className={`rounded-md px-3 py-1.5 ${asOrg ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'}`}>Organization</Link>
+      </nav>
       <Card>
         <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
           {notice && !formError && <Alert tone="success">{notice}</Alert>}
@@ -106,7 +115,7 @@ export function SignInPage() {
         )}
       </Card>
       <p className="mt-4 flex flex-wrap justify-between gap-2 text-sm text-ink-500">
-        <span>New here? <Link className="text-brand-700 underline" to="/join">Create an account</Link></span>
+        <span>{asOrg ? 'New organization? ' : 'New here? '}<Link className="text-brand-700 underline" to={asOrg ? '/signup?as=organization' : '/join'}>{asOrg ? 'Register it' : 'Create an account'}</Link></span>
         <Link className="text-brand-700 underline" to="/forgot-password">Forgot password?</Link>
       </p>
     </AuthFrame>
@@ -158,7 +167,7 @@ export function SignUpPage() {
   }
 
   return (
-    <AuthFrame>
+    <AuthFrame photo={asOrg ? 'team' : 'hero'}>
       <h1 className="mb-2 text-2xl font-bold tracking-tight sm:text-3xl">{asOrg ? 'Register your organization' : 'Create your volunteer account'}</h1>
       <p className="mb-6 text-sm text-ink-700">{asOrg
         ? 'Step 1 of 2: create the account of the person who will administer the organization. After confirming your email you will enter the organization details and verification documents. Organizations can publish opportunities only after Worldkin verifies them.'
