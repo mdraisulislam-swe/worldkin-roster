@@ -102,9 +102,9 @@ See [`HACKATHON_SCORECARD.md`](HACKATHON_SCORECARD.md):
 
 | Part | Estimate |
 |---|---|
-| Mandatory | ≈ 51.5–59.5 / 60 |
-| Advanced | ≈ 35–40 / 40 |
-| Total | ≈ 86.5–99.5 |
+| Mandatory | **48 / 60 evidence-backed** (earlier estimate 53.5–59.5, corrected) |
+| Advanced | **36 / 40 evidence-backed** (2 + 2 understanding marks depend on the video) |
+| Total | **84 / 100 evidence-backed**; 16 marks at risk (earlier estimate 88.5–99.5, corrected) |
 
 The total assumes Production is updated and the video and public repository are submitted. **Not guaranteed.**
 

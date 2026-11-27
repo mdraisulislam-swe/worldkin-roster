@@ -127,10 +127,10 @@ The 31 screens already VERIFIED in R1–R5 were not touched. Changes this round:
 | M06 Errors (8) | 7.5–8 | + geolocation denied, tile error, invalid video states | Verified locally |
 | M07 Responsive / a11y (4) | 3.5–4 | + 45 new sweep checks PASS | Verified locally (5 widths) |
 | M08 Deploy / docs (4) | 2.5–4 | — | Production not updated (BLOCKED on approval) |
-| **Mandatory** | **≈ 53–59.5 / 60** | | |
+| **Mandatory** | **≈ 53.5–59.5 / 60** (corrected; evidence-only floor 48 — see HACKATHON_SCORECARD.md) | | |
 | A03 Security (20) | 17–20 | Proposal follows the same RLS / RPC pattern; not live, so not scored | Verified live L1–L18 (unchanged) |
 | A05 Concurrency (20) | 18–20 | Unchanged; capacity rules untouched (display only) | Verified live (unchanged) |
-| **Total** | **≈ 88–99.5 / 100** | | Only if Production is updated and the video and links are submitted |
+| **Total** | **≈ 88.5–99.5 / 100** (corrected; evidence-only floor 84) | | Only if Production is updated and the video and links are submitted |
 
 **Submission:**
 
