@@ -7,6 +7,7 @@ import { getUnreadCount } from '../../lib/platform'
 import { LoadingState } from '../ui'
 import { Icon } from '../Icon'
 import { workspaceChrome } from '../../lib/workspace'
+import { REPOSITORY_URL, SOCIAL_LINKS, type SocialKey } from '../../lib/siteContent'
 
 const linkCls = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg px-3 py-2 text-[14.5px] font-medium ${isActive ? 'bg-brand-50 text-brand-700' : 'text-ink-700 hover:bg-neutral-100'}`
@@ -66,6 +67,7 @@ export function AppShell() {
       <NavLink to="/explore" className={linkCls} onClick={() => setOpen(false)}>Explore</NavLink>
       <NavLink to="/events" className={linkCls} onClick={() => setOpen(false)}>Events</NavLink>
       <NavLink to="/organizations" end className={linkCls} onClick={() => setOpen(false)}>Organizations</NavLink>
+      <NavLink to="/map" className={linkCls} onClick={() => setOpen(false)}>Map</NavLink>
       {session && <NavLink to="/me" className={linkCls} onClick={() => setOpen(false)}>My dashboard</NavLink>}
       {session && (
         <NavLink to="/orgs" className={linkCls} onClick={() => setOpen(false)}>
@@ -155,17 +157,21 @@ export function AppShell() {
           <div>
             <p className="flex items-center gap-2 font-semibold text-white"><img src="/favicon.svg" alt="" width={20} height={20} />Worldkin Roster</p>
             <p className="mt-2 text-sage-200/80">Everyone is kin. Discover opportunities with verified organizations and build a record of experience they confirm.</p>
+            <SocialLinks />
           </div>
           <nav aria-label="Discover" className="flex flex-col gap-2">
             <p className="font-semibold text-white">Discover</p>
             <Link className="text-brand-50 hover:underline" to="/explore">Explore opportunities</Link>
             <Link className="text-brand-50 hover:underline" to="/events">Upcoming events</Link>
             <Link className="text-brand-50 hover:underline" to="/organizations">Verified organizations</Link>
+            <Link className="text-brand-50 hover:underline" to="/map">Map</Link>
+            <Link className="text-brand-50 hover:underline" to="/media">Stories &amp; media</Link>
           </nav>
           <nav aria-label="Get started" className="flex flex-col gap-2">
             <p className="font-semibold text-white">Get started</p>
             <Link className="text-brand-50 hover:underline" to="/signup?as=volunteer">Join as a volunteer</Link>
             <Link className="text-brand-50 hover:underline" to="/signup?as=organization">Register an organization</Link>
+            <Link className="text-brand-50 hover:underline" to="/emergency">Emergency Volunteer Call</Link>
           </nav>
           <nav aria-label="Trust and safety" className="flex flex-col gap-2">
             <p className="font-semibold text-white">Trust &amp; safety</p>
@@ -174,9 +180,35 @@ export function AppShell() {
           </nav>
         </div>
         <div className="border-t border-white/10">
-          <p className="mx-auto max-w-6xl px-4 py-4 text-xs text-sage-200/80 sm:px-6">Worldkin Roster · HACK THE VIBE 2026 · World Problem Solver track</p>
+          <p className="mx-auto flex max-w-6xl flex-wrap justify-between gap-2 px-4 py-4 text-xs text-sage-200/80 sm:px-6"><span>Worldkin Roster · HACK THE VIBE 2026 · World Problem Solver track</span>
+            <a className="inline-flex items-center gap-1.5 text-brand-50 hover:underline" href={REPOSITORY_URL} target="_blank" rel="noreferrer noopener"><Icon name="github" size={14} />Source code</a></p>
         </div>
       </footer>}
     </div>
+  )
+}
+
+/**
+ * Official social channels (prototype footer). A channel without an official URL in lib/siteContent.ts is
+ * shown dimmed and is not a link, so nothing points to "#" or to an invented page.
+ */
+function SocialLinks() {
+  return (
+    <ul aria-label="Official social channels" className="mt-4 flex flex-wrap gap-2">
+      {(Object.keys(SOCIAL_LINKS) as SocialKey[]).map((k) => {
+        const { label, url } = SOCIAL_LINKS[k]
+        return (
+          <li key={k}>
+            {url ? (
+              <a href={url} target="_blank" rel="noreferrer noopener" aria-label={`Worldkin on ${label}`} className="grid h-9 w-9 place-items-center rounded-lg bg-white/10 text-white hover:bg-white/20"><Icon name={k} size={17} /></a>
+            ) : (
+              <span title={`Official ${label} link — to be supplied by the Worldkin team`} className="grid h-9 w-9 cursor-not-allowed place-items-center rounded-lg bg-white/5 text-white/35">
+                <Icon name={k} size={17} /><span className="sr-only">{label} (link not available yet)</span>
+              </span>
+            )}
+          </li>
+        )
+      })}
+    </ul>
   )
 }

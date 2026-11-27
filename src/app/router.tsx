@@ -36,6 +36,9 @@ const ForgotPasswordPage = page(() => import('../pages/AuthPages'), 'ForgotPassw
 const ResetPasswordPage = page(() => import('../pages/AuthPages'), 'ResetPasswordPage')
 const OrganizationsPage = page(() => import('../pages/OrganizationsPages'), 'OrganizationsPage')
 const OrganizationProfilePage = page(() => import('../pages/OrganizationsPages'), 'OrganizationProfilePage')
+const MapPage = page(() => import('../pages/MapPages'), 'MapPage')
+const EmergencyPage = page(() => import('../pages/MapPages'), 'EmergencyPage')
+const MediaPage = page(() => import('../pages/MapPages'), 'MediaPage')
 const MyApplicationsPage = page(() => import('../pages/VolunteerPages'), 'MyApplicationsPage')
 const NotificationsPage = page(() => import('../pages/VolunteerPages'), 'NotificationsPage')
 const ComplaintsPage = page(() => import('../pages/VolunteerPages'), 'ComplaintsPage')
@@ -63,6 +66,9 @@ export const router = createBrowserRouter([
       { path: 'opportunities/:id', element: <OpportunityPage /> },
       { path: 'events', element: <EventsPage /> },
       { path: 'events/:id', element: <EventDetailPage /> },
+      { path: 'map', element: <MapPage /> },
+      { path: 'emergency', element: <EmergencyPage /> },
+      { path: 'media', element: <MediaPage /> },
       { path: 'signin', element: <SignInPage /> },
       { path: 'signup', element: <SignUpPage /> },
       { path: 'auth/confirmed', element: <AuthConfirmedPage /> },

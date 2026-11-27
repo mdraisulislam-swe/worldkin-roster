@@ -12,6 +12,9 @@ import { useNow } from '../lib/useNow'
 import { CompensationBadge, OrgLogo } from '../components/cards'
 import { Button, CapacityMeter, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select } from '../components/ui'
 import { Icon } from '../components/Icon'
+import { CoverBand } from '../components/CoverBand'
+import { countryName } from '../lib/geo'
+import { seatStats } from '../lib/seats'
 
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' })
 const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
@@ -151,6 +154,20 @@ export function EventDetailPage() {
       <PageHeader title={eventTitle(e)} subtitle={<>{formatShiftWindow(e.starts_at, e.ends_at)} · {place(e)}</>} />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-4 lg:col-span-2">
+          <div className="overflow-hidden rounded-xl"><CoverBand cause={o.cause} className="h-36 sm:h-44" /></div>
+          <Card>
+            <h2 className="mb-3 font-semibold">Event details</h2>
+            <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+              <div><dt className="text-xs text-ink-500">Date and time</dt><dd className="font-medium">{formatShiftWindow(e.starts_at, e.ends_at)}</dd></div>
+              <div><dt className="text-xs text-ink-500">Format</dt><dd className="font-medium">{MODE_LABELS[o.mode]}</dd></div>
+              <div><dt className="text-xs text-ink-500">Place</dt><dd className="font-medium">{o.mode === 'remote' ? 'Online' : [o.city, o.country_code ? countryName(o.country_code) : null].filter(Boolean).join(', ') || 'Shared by the organizer after selection'}</dd></div>
+              <div><dt className="text-xs text-ink-500">Organized by</dt><dd className="font-medium">{org ? <Link className="text-brand-700 underline" to={`/organizations/${org.slug}`}>{org.name}</Link> : '—'}{org?.status === 'verified' ? ' · verified' : ''}</dd></div>
+              <div><dt className="text-xs text-ink-500">How to take part</dt><dd className="font-medium">{o.selection_mode === 'application' ? 'Apply, then accept an offer' : 'Open sign-up'}</dd></div>
+              <div><dt className="text-xs text-ink-500">Compensation</dt><dd className="font-medium"><CompensationBadge type={o.compensation_type} />{o.compensation_details ? <span className="ml-2 font-normal text-ink-700">{o.compensation_details}</span> : null}</dd></div>
+              {o.skills_wanted && o.skills_wanted.length > 0 && <div className="sm:col-span-2"><dt className="text-xs text-ink-500">Skills wanted</dt><dd className="mt-1 flex flex-wrap gap-1.5">{o.skills_wanted.map((s) => <span key={s} className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-ink-700">{s}</span>)}</dd></div>}
+              {o.requirements && <div className="sm:col-span-2"><dt className="text-xs text-ink-500">Responsibilities and requirements</dt><dd className="mt-1 whitespace-pre-line text-ink-700">{o.requirements}</dd></div>}
+            </dl>
+          </Card>
           <Card>
             <div className="flex flex-wrap items-center gap-2">
               <CompensationBadge type={o.compensation_type} />
@@ -167,7 +184,7 @@ export function EventDetailPage() {
               <p className="text-sm text-ink-700">This event has ended. Hours for those who attended are verified by the organization.</p>
             ) : (
               <>
-                {seat && <CapacityMeter confirmed={seat.confirmed} capacity={seat.capacity} waitlisted={seat.waitlisted} />}
+                {seat && <SeatSummary confirmed={Number(seat.confirmed)} capacity={seat.capacity} waitlisted={Number(seat.waitlisted)} />}
                 <p className="mt-3 text-sm text-ink-700">{o.selection_mode === 'application'
                   ? 'Selection by application: apply on the opportunity page; selected volunteers receive an offer to accept.'
                   : 'Open sign-up: join this shift on the opportunity page while seats are free; otherwise join the waitlist.'}</p>
@@ -199,5 +216,18 @@ export function EventDetailPage() {
         </section>
       )}
     </>
+  )
+}
+
+/** Capacity from confirmed participants only (shift_availability); pending applications and offers do not hold a seat. */
+function SeatSummary({ confirmed, capacity, waitlisted }: { confirmed: number; capacity: number; waitlisted: number }) {
+  const s = seatStats(confirmed, capacity)
+  return (
+    <div>
+      <p className="flex items-baseline justify-between gap-2"><span className="text-2xl font-bold tabular-nums text-ink-900">{s.pct}%</span><span className="text-sm text-ink-500">{confirmed} of {capacity} seats confirmed</span></p>
+      <CapacityMeter confirmed={confirmed} capacity={capacity} waitlisted={waitlisted} />
+      <p className={`mt-2 text-sm font-semibold ${s.full ? 'text-amber-800' : 'text-emerald-800'}`}>{s.full ? 'Full — waitlist open' : `${s.left} seat${s.left === 1 ? '' : 's'} left`}</p>
+      <p className="mt-1 text-xs text-ink-500">Only confirmed participants take a seat. Applications and unaccepted offers do not; a cancellation frees the seat for the waitlist.</p>
+    </div>
   )
 }

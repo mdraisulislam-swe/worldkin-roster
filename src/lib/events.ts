@@ -16,11 +16,13 @@ export type PublicEvent = {
     id: string; title: string; description: string; cause: Enums<'cause_category'>; mode: Enums<'opportunity_mode'>
     city: string | null; country_code: string | null; compensation_type: CompensationType; selection_mode: SelectionMode
     org_id: string
+    /** Optional detail fields (public columns of the opportunity). */
+    requirements?: string | null; skills_wanted?: string[]; compensation_details?: string | null
     organizations: { id: string; name: string; slug: string; status: Enums<'org_status'>; logo_url: string | null } | null
   } | null
 }
 
-const SELECT = 'id, title, starts_at, ends_at, capacity, opportunity_id, opportunities!inner(id, title, description, cause, mode, city, country_code, compensation_type, selection_mode, org_id, organizations(id, name, slug, status, logo_url))'
+const SELECT = 'id, title, starts_at, ends_at, capacity, opportunity_id, opportunities!inner(id, title, description, cause, mode, city, country_code, compensation_type, selection_mode, org_id, requirements, skills_wanted, compensation_details, organizations(id, name, slug, status, logo_url))'
 const raw = () => db() as unknown as SupabaseClient
 
 async function list(q: PromiseLike<{ data: unknown; error: unknown }>): Promise<PublicEvent[]> {

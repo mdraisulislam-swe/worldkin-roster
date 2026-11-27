@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { Icon } from '../components/Icon'
 import { useAuth } from '../auth/AuthProvider'
 import { CAUSE_LABELS } from '../lib/format'
+import { COUNTRY_OPTIONS } from '../lib/geo'
 import { getPlatformStats, listOrganizations, searchOpportunities } from '../lib/platform'
 import { useNow } from '../lib/useNow'
 import { CardSkeletons, OpportunityCardView, OrgCardView } from '../components/cards'
@@ -198,24 +199,30 @@ const VOLUNTEER_STEPS = [
   { title: 'Build your passport', text: 'Verified experience and certificates collect in a printable experience passport.' },
 ]
 
-/** Hero search: hands the words and place to Explore's existing filters (q, city). */
+/** Hero search: hands the words, country and city to Explore's existing filters (q, country, city). */
 function HeroSearch() {
   const navigate = useNavigate()
-  const [q, setQ] = useState(''), [place, setPlace] = useState('')
+  const [q, setQ] = useState(''), [place, setPlace] = useState(''), [country, setCountry] = useState('')
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     const p = new URLSearchParams()
     if (q.trim()) p.set('q', q.trim())
+    if (country) p.set('country', country)
     if (place.trim()) p.set('city', place.trim())
     navigate('/explore' + (p.size ? '?' + p.toString() : ''))
   }
   return (
-    <form role="search" onSubmit={onSubmit} className="flex max-w-xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-lg sm:flex-row">
-      <label className="flex flex-1 items-center gap-2 px-3 text-ink-500"><Icon name="search" size={18} /><span className="sr-only">What do you want to do?</span>
-        <input aria-label="What would you like to do?" value={q} onChange={(e) => setQ(e.currentTarget.value)} placeholder="Teaching, food relief, climate…" className="min-h-11 w-full bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-500/70" /></label>
-      <label className="flex flex-1 items-center gap-2 border-black/5 px-3 text-ink-500 sm:border-l"><Icon name="map-pin" size={18} /><span className="sr-only">City</span>
-        <input aria-label="City" value={place} onChange={(e) => setPlace(e.currentTarget.value)} placeholder="City" className="min-h-11 w-full bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-500/70" /></label>
-      <button className="min-h-11 rounded-lg bg-brand-700 px-5 text-[15px] font-semibold text-white hover:bg-brand-800">Find opportunities</button>
+    <form role="search" onSubmit={onSubmit} className="grid max-w-2xl grid-cols-2 gap-1 rounded-2xl bg-white p-2 shadow-lg sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+      <label className="col-span-2 flex min-w-0 items-center gap-2 px-3 text-ink-500"><Icon name="search" size={18} />
+        <input aria-label="What would you like to do?" value={q} onChange={(e) => setQ(e.currentTarget.value)} placeholder="Teaching, food relief, climate…" className="min-h-12 w-full min-w-0 bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-500/70" /></label>
+      <label className="order-3 flex min-w-0 items-center gap-2 border-t border-black/5 px-3 text-ink-500"><Icon name="globe" size={18} />
+        <select aria-label="Country (optional)" value={country} onChange={(e) => setCountry(e.currentTarget.value)} className="min-h-11 w-full min-w-0 bg-transparent text-[15px] text-ink-900 outline-none">
+          <option value="">Country</option>
+          {COUNTRY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select></label>
+      <label className="order-4 flex min-w-0 items-center gap-2 border-l border-t border-black/5 px-3 text-ink-500 sm:col-span-2"><Icon name="map-pin" size={18} />
+        <input aria-label="City" value={place} onChange={(e) => setPlace(e.currentTarget.value)} placeholder="City" className="min-h-11 w-full min-w-0 bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-500/70" /></label>
+      <button className="order-5 col-span-2 min-h-11 whitespace-nowrap rounded-lg bg-brand-700 px-5 sm:order-2 sm:col-span-1 text-[15px] font-semibold text-white hover:bg-brand-800">Find opportunities</button>
     </form>
   )
 }

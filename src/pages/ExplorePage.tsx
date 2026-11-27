@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { Constants, type Enums } from '../lib/database.types'
 import { CAUSE_LABELS, MODE_LABELS } from '../lib/format'
+import { COUNTRY_OPTIONS, isCountryCode } from '../lib/geo'
 import { COMPENSATION_LABELS, COMPENSATION_TYPES, searchOpportunities, type CompensationType, type OpportunitySearch, type SearchSort } from '../lib/platform'
 import { useNow } from '../lib/useNow'
 import { toAppError } from '../lib/errors'
@@ -61,7 +62,8 @@ export function ExplorePage() {
 
   return (
     <>
-      <PageHeader title="Explore opportunities" subtitle="Voluntary, stipend-based and paid roles from verified organizations." />
+      <PageHeader title="Explore opportunities" subtitle="Voluntary, stipend-based and paid roles from verified organizations."
+        actions={<Link to={search.country ? `/map?kind=opp&country=${search.country.toUpperCase()}` : "/map?kind=opp"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#d5d9d2] bg-white px-4 text-[15px] font-semibold text-ink-900 hover:border-brand-600"><Icon name="map" size={18} />Map view</Link>} />
       <Card className="mb-6 sm:p-6">
         {/* Keyed to the URL so the fields always show the active filters (Clear, back/forward). */}
         <form key={params.toString()} className="flex flex-col gap-4" role="search" onSubmit={(e) => { e.preventDefault(); update(e.currentTarget) }}>
@@ -112,7 +114,8 @@ export function ExplorePage() {
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <Select label="Cause" name="cause" defaultValue={search.cause ?? ''}
                 options={[{ value: '', label: 'All causes' }, ...Constants.public.Enums.cause_category.map((c) => ({ value: c, label: CAUSE_LABELS[c] }))]} />
-              <TextField label="Country" name="country" defaultValue={search.country} placeholder="BD" maxLength={2} hint="2-letter code" />
+              <Select label="Country" name="country" defaultValue={(search.country ?? '').toUpperCase()}
+                options={[{ value: '', label: 'Any country' }, ...(search.country && !isCountryCode(search.country) ? [{ value: search.country.toUpperCase(), label: search.country.toUpperCase() }] : []), ...COUNTRY_OPTIONS]} />
               <TextField label="Skill" name="skill" defaultValue={search.skill} placeholder="first aid" />
             </div>
           </details>

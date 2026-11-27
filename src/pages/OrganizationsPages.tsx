@@ -8,6 +8,9 @@ import { useNow } from '../lib/useNow'
 import { CardSkeletons, OpportunityCardView, OrgCardView, OrgLogo } from '../components/cards'
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge, TextField } from '../components/ui'
 import { eventTitle, getRecentEvents, getUpcomingEvents } from '../lib/events'
+import { CoverBand } from '../components/CoverBand'
+import { Icon } from '../components/Icon'
+import { countryName } from '../lib/geo'
 
 const shortDate = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
@@ -81,17 +84,26 @@ export function OrganizationProfilePage() {
   const o = org.data
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-start gap-4">
-        <OrgLogo name={o.name} url={o.logo_url} size={72} />
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold text-ink-900">{o.name}</h1>
-          <p className="mt-1 text-sm text-ink-500">{ORG_TYPE_LABELS[o.org_type]} · {CAUSE_LABELS[o.cause]} · {o.city ? `${o.city}, ` : ''}{o.country_code}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {o.status === 'verified' ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900">✓ Verified by Worldkin</span> : <StatusBadge status={o.status} />}
-            {fb.data?.[0] && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">★ {fb.data[0].average_rating} from {fb.data[0].total_count} volunteer review{fb.data[0].total_count === 1 ? '' : 's'}</span>}
+      <p className="mb-3 text-sm text-ink-500"><Link className="hover:underline" to="/organizations">Organizations</Link> <span aria-hidden>/</span> {o.name}</p>
+      {/* Brand header (prototype A05): cover in the organization's cause colours, large logo, identity and trust marks. */}
+      <section aria-label="Organization identity" className="mb-6 overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-[0_1px_2px_rgba(20,26,34,0.04)]">
+        <CoverBand cause={o.cause} className="h-32 sm:h-44" />
+        <div className="flex flex-wrap items-end gap-4 px-5 pb-5 sm:px-7">
+          <div className="-mt-12 rounded-2xl border-4 border-white bg-white shadow sm:-mt-14"><OrgLogo name={o.name} url={o.logo_url} size={96} /></div>
+          <div className="min-w-0 flex-1 pt-3">
+            <h1 className="text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">{o.name}</h1>
+            <p className="mt-1 text-sm text-ink-500">{ORG_TYPE_LABELS[o.org_type]} · {CAUSE_LABELS[o.cause]} · {o.city ? `${o.city}, ` : ''}{countryName(o.country_code)}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {o.status === 'verified' ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-900"><Icon name="shield-check" size={14} />Verified by Worldkin</span> : <StatusBadge status={o.status} />}
+              {fb.data?.[0] && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">★ {fb.data[0].average_rating} from {fb.data[0].total_count} volunteer review{fb.data[0].total_count === 1 ? '' : 's'}</span>}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-3">
+            <a href="#opps-h" className="inline-flex min-h-11 items-center rounded-lg bg-brand-700 px-4 text-[15px] font-semibold text-white hover:bg-brand-800">See open opportunities</a>
+            {o.website && <a href={o.website} target="_blank" rel="noreferrer noopener" className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#d5d9d2] bg-white px-4 text-[15px] font-semibold text-ink-900 hover:border-brand-600">Website<Icon name="external-link" size={14} /></a>}
           </div>
         </div>
-      </div>
+      </section>
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
           {o.description && (
