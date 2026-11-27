@@ -187,3 +187,22 @@ The 31 screens already VERIFIED in R1–R5 were not touched. Changes this round:
 | Responsive readiness | Verified locally at 5 widths for all changed pages |
 | Hackathon judging readiness | High for the declared A03 / A05. Depends on Production being updated |
 | Submission readiness | **Not ready:** video, public repository check and Production update still required |
+
+## L. Preview release and smoke test (27 Nov, after the approved push)
+
+- **Push:** `1aa2c7f..2dfe9c5` to `feature/applications-platform` (fast-forward, no force). `main` and Production are unchanged at `e616aad` (Production deployment `dpl_56H7xFqjMDa41sctRpc8qQumievu`).
+- **Preview deployment:** `dpl_6mGZ81ssvnWnoQpsKTd7bYk67fbQ`, commit `2dfe9c5`, **READY** (built in about 8 s).
+  - Unique URL: https://worldkin-roster-pnw3egrjz-eleventh-cipher.vercel.app
+  - Stable URL: https://worldkin-roster-git-feature-applications-81ff46-eleventh-cipher.vercel.app
+- **Serve-task "failures" (local only):** every local server printed its ready line, then ended because it was stopped deliberately (`taskkill /F` → exit 1) or the session was interrupted (exit 4). The application build is unaffected.
+
+| Smoke check on Preview (signed out, read-only) | Result |
+|---|---|
+| Home loads; country search present; no admin link in public navigation; 5 social icons disabled, none fake | PASS |
+| `/map?country=BD`: 12/12 OpenStreetMap tiles loaded, attribution shown, clusters 2/2/8, "12 on the map · Bangladesh", volunteer layer marked inactive, no coordinates in the page text | PASS |
+| `/emergency`: not-an-emergency-service notice, "not switched on" notice, no form for anonymous visitors, organization sign-in link | PASS |
+| `/media`: 3 × "Video not published yet", no embedded player | PASS |
+| Event detail: "Event details" card, "0 of 8 seats confirmed", "8 seats left" | PASS |
+| Organization profile: brand header with "Verified by Worldkin" | PASS |
+| `/admin` and `/me` while signed out redirect to `/signin?next=…` | PASS |
+| Signed-in journeys: volunteer workspace, organizer isolation, admin denial for a non-admin, logout, emergency form as a verified organization | **BLOCKED** — no Preview session in the browser, and no password was requested |

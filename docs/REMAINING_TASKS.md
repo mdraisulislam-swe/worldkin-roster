@@ -8,7 +8,7 @@
 
 | # | Task | Who | Why |
 |---|---|---|---|
-| P0-1 | Push the 6 local commits to `feature/applications-platform` **(approval)** | Owner → Claude | Preview must show R1–R5 |
+| P0-1 | ~~Push to `feature/applications-platform`~~ **DONE** (2dfe9c5, Preview READY) | — | — |
 | P0-2 | Read-only smoke pass on the new Preview: volunteer + admin (done before), and **organization pages with a demo org admin** | Owner signs in | Organization pages are still BLOCKED (no membership on the owner's account) |
 | P0-3 | PR → `main`, merge, Production deploy **(approval)** | Owner | Production lacks the recovery fix and all UI work (S03 "live URL matches repository") |
 | P0-4 | Add `https://worldkin-roster.vercel.app/**` to Supabase Redirect URLs | Owner (Dashboard) | Recovery links on Production |
