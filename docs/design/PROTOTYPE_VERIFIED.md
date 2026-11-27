@@ -35,8 +35,12 @@
 | **A01** | `#/home` | `/` | **VERIFIED (R4)** | Already matched (hero with prototype photo, search, two calls to action, impact row with real counts). No code change. Floating "next shift" chip on the photo NOT CONNECTED. |
 | **A03** | `#/opportunity` | `/opportunities/:id` | **VERIFIED (R4, with deviation)** | Header, badges, about / compensation / what-happens-next cards and right-hand shift column match the structure. Kept deviation: the right column lists every shift with its own Join button instead of one "Next shift" card (richer and already tested). Cover photo and related opportunities NOT CONNECTED. |
 | **A04** | `#/organizations` | `/organizations` | **VERIFIED (R4)** | Changed: "Verified organizations" title and subtitle, two-column cards, note that organizations awaiting verification are not listed. Filters (cause/type/country) kept. Ratings on cards NOT CONNECTED. |
-| A05 | `#/org` (organization profile) | `/organizations/:slug` | PARTIAL (R4) | Width sweep passes; two-column layout with opportunities. Trust sidebar details not re-compared. |
-| A07 | event detail | `/events/:id` | PARTIAL (R4) | Width sweep passes. Not re-compared side by side. |
+| **A05** | `#/org-profile` | `/organizations/:slug` | **VERIFIED (final round)** | Brand header: cause-colour cover, 96 px logo overlapping, identity, verified mark, CTA. Brand colour/cover image NOT CONNECTED (no fields). |
+| **A07** | `#/event` | `/events/:id` | **VERIFIED (final round)** | Details card + capacity (%, confirmed of capacity, seats left / full). |
+| **A10** | `#/map` | `/map` | **PARTIAL (final round)** | Real Leaflet/OSM map replaces the fictional SVG (intended). Radius filter and volunteer layer need wk12-A. |
+| **A11** | `#/emergency` | `/emergency` | **PARTIAL (final round)** | All sections + validated form; sending BLOCKED until wk12-B approved. |
+| **A09** | `#/video` | `/media` | **PARTIAL (final round)** | Real player; official video URLs missing. |
+| A08 | `#/media` | `/media` (notice) | BLOCKED | Needs wk08. |
 | **B01–B02** | `#/login/volunteer`, `#/login/org` | `/signin?as=volunteer`, `/signin?as=org` | **VERIFIED (R5)** | Matched: account-type eyebrow, "Welcome back", role-specific subtitle, Volunteer / Organization switch (links; keeps `next`), photo panel. Wording only: the same sign-in runs for both roles. "Keep me signed in" and demo-role chips NOT CONNECTED. |
 | **B04–B06** | `#/register` | `/join`, `/signup?as=…` | **VERIFIED (R5, with deviation)** | Role choice is a separate `/join` page (two cards) rather than a step inside the form; signup panels now show the prototype photo (`hero` volunteer / `team` organization). 3-step progress header NOT CONNECTED. |
 | B03 | `#/admin/login` | — | NOT CONNECTED | Admins use the normal sign-in; MFA is not built. |
@@ -68,7 +72,7 @@
 
 ## Remaining (next batches)
 
-- **NOT CONNECTED:** A08–A11, B03, E07.
+- **NOT CONNECTED:** B03, E07. See docs/FINAL_IMPLEMENTATION_REPORT.md for A08–A11.
 
 ## Photos (R5)
 
