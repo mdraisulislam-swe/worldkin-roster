@@ -63,6 +63,13 @@ export function spotsLabel(openSpots: number, upcomingShifts: number): { text: s
   return null
 }
 
+/** Factual seat summary from search_opportunities: open seats (capacity − confirmed) across upcoming shifts. */
+export function seatsSummary(openSpots: number, upcomingShifts: number): string | null {
+  if (upcomingShifts <= 0) return null
+  const shifts = `${upcomingShifts} upcoming shift${upcomingShifts === 1 ? '' : 's'}`
+  return openSpots > 0 ? `${openSpots} open seat${openSpots === 1 ? '' : 's'} · ${shifts}` : `No open seats · ${shifts}`
+}
+
 /** "Org name" -> "org-name" (matches the database slug rule). */
 export function slugify(input: string): string {
   return input
@@ -87,4 +94,18 @@ export function fromLocalInput(value: string): string {
 export function matchingSkills(have: string[], want: string[]): string[] {
   const mine = new Set(have.map((s) => s.trim().toLowerCase()))
   return want.filter((w) => mine.has(w.trim().toLowerCase()))
+}
+
+/** Relative time for recent events (prototype notifications): "just now", "12 min ago", "3 h ago", "Yesterday", else a date. */
+export function timeAgo(iso: string, now: number): string {
+  const t = new Date(iso).getTime()
+  const mins = Math.floor((now - t) / 60_000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins} min ago`
+  const day = (x: number) => { const d = new Date(x); d.setHours(0, 0, 0, 0); return d.getTime() }
+  const days = Math.round((day(now) - day(t)) / 86_400_000)
+  if (days === 0) return `${Math.floor(mins / 60)} h ago`
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days} days ago`
+  return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(t))
 }

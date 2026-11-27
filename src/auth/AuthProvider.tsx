@@ -4,6 +4,10 @@ import { supabase } from '../lib/supabase'
 import { toAppError, unwrap } from '../lib/errors'
 import type { Enums, Tables } from '../lib/database.types'
 import { confirmationRedirectUrl } from '../lib/authRedirect'
+import { isExistingAccountSignup } from '../lib/otp'
+
+/** UI routing hint only; never trusted for authorization (roles live in the database). */
+export type SignupIntent = 'volunteer' | 'organization'
 
 export type Membership = {
   org_id: string
@@ -19,7 +23,8 @@ type AuthState = {
   isPlatformAdmin: boolean
   roleIn: (orgId: string) => Enums<'org_role'> | null
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, fullName: string, next?: string | null) => Promise<{ needsConfirmation: boolean }>
+  signUp: (email: string, password: string, fullName: string, next?: string | null, intent?: SignupIntent) => Promise<{ needsConfirmation: boolean; alreadyRegistered: boolean }>
+  verifySignupCode: (email: string, code: string) => Promise<void>
   resendConfirmation: (email: string) => Promise<void>
   signOut: () => Promise<void>
   refresh: () => Promise<void>
@@ -57,12 +62,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!supabase) return
     let active = true
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!active) return
-      setSession(data.session)
-      await loadUserData(data.session).catch(() => undefined)
-      if (active) setLoading(false)
-    })
+    supabase.auth.getSession()
+      .then(async ({ data }) => {
+        if (!active) return
+        setSession(data.session)
+        await loadUserData(data.session).catch(() => undefined)
+      })
+      // An unreachable Auth service must never leave the app stuck on "Checking your session".
+      .catch(() => { if (active) setSession(null) })
+      .finally(() => { if (active) setLoading(false) })
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s)
       // Defer DB calls out of the auth callback (recommended by supabase-js).
@@ -87,15 +95,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw toAppError(error)
       },
-      async signUp(email, password, fullName, next) {
+      async signUp(email, password, fullName, next, intent = 'volunteer') {
         if (!supabase) throw new Error('Not configured')
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: fullName }, emailRedirectTo: confirmationRedirectUrl(window.location.origin, next) },
+          // full_name personalises the verification email; signup_intent only routes the UI.
+          // The profile trigger ignores any role in metadata, so this cannot grant privileges.
+          options: { data: { full_name: fullName, signup_intent: intent }, emailRedirectTo: confirmationRedirectUrl(window.location.origin, next) },
         })
         if (error) throw toAppError(error)
-        return { needsConfirmation: !data.session }
+        // Already-registered address: Supabase sends no email, so the UI must not say it did.
+        if (isExistingAccountSignup(data.user)) return { needsConfirmation: false, alreadyRegistered: true }
+        return { needsConfirmation: !data.session, alreadyRegistered: false }
+      },
+      async verifySignupCode(email, code) {
+        if (!supabase) throw new Error('Not configured')
+        // type 'email' = sign-up / email OTP. Password recovery uses 'recovery' and a different email.
+        const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' })
+        if (error) throw toAppError(error)
       },
       async resendConfirmation(email) {
         if (!supabase) throw new Error('Not configured')

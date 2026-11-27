@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildIcs } from './calendar'
-import { matchingSkills, spotsLabel, startsIn } from './format'
+import { matchingSkills, seatsSummary, spotsLabel, startsIn } from './format'
 
 describe('buildIcs — add to calendar', () => {
   const ics = buildIcs(
@@ -37,5 +37,14 @@ describe('listing helpers', () => {
   it('matchingSkills is case- and whitespace-insensitive (same rule as join_shift)', () => {
     expect(matchingSkills(['First Aid ', 'cooking'], ['first aid', 'logistics'])).toEqual(['first aid'])
     expect(matchingSkills([], ['logistics'])).toEqual([])
+  })
+})
+
+describe('seat summary on opportunity cards', () => {
+  it('states open seats and upcoming shifts from real counts only', () => {
+    expect(seatsSummary(5, 2)).toBe('5 open seats · 2 upcoming shifts')
+    expect(seatsSummary(1, 1)).toBe('1 open seat · 1 upcoming shift')
+    expect(seatsSummary(0, 3)).toBe('No open seats · 3 upcoming shifts')
+    expect(seatsSummary(0, 0)).toBeNull()
   })
 })

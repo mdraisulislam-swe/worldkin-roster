@@ -5,7 +5,7 @@ import { join } from 'node:path';
 export async function freshDb(migDir) {
   const db = new PGlite({ extensions: { btree_gist } });
   await db.exec(readFileSync(new URL('./supabase_stub.sql', import.meta.url), 'utf8'));
-  const files = readdirSync(migDir).filter(f => f.endsWith('.sql')).sort();
+  const files = readdirSync(migDir).filter(f => f.endsWith('.sql') && !f.includes('_storage')).sort(); // storage schema exists only on Supabase
   const applied = [];
   for (const f of files) {
     const sql = readFileSync(join(migDir, f), 'utf8');

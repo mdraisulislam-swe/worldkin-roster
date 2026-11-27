@@ -1,0 +1,26 @@
+# A03 security smoke test (live)
+# run at 2026-11-25T19:13:46.741Z against https://ekkvwgohpzliwbmjnrth.supabase.co
+
+PASS  SETUP seed data reachable (2 verified orgs, opportunity, shift)
+PASS  L1    anon cannot read signups
+PASS  L2    anon cannot read profiles
+PASS  L3    anon sees only published, non-sensitive opportunities
+PASS  L4    volunteer cannot set own platform_role
+PASS  L5    volunteer cannot insert signups directly (capacity bypass)
+PASS  L6    volunteer cannot review organizations
+PASS  L7    internal function _promote_waitlist is not callable
+PASS  L8    volunteer sees only own signups
+PASS  L9    volunteer reads no audit log rows
+PASS  L10   volunteer is not a platform admin
+PASS  L11   coordinator of org A cannot read org B roster
+PASS  L12   API cannot create a past shift (P1, authenticator detected)
+PASS  L13   API cannot move a shift into the past (P2)
+PASS  L14   capacity is not directly writable
+PASS  L15   coordinator cannot create a shift for another org
+PASS  L16   coordinator (not org admin) reads no audit log rows
+PASS  L17   invite response identical for registered and unregistered email
+PASS  L18   org admin reads only audit rows of own organizations
+SKIP  L19   Founder check (FOUNDER_EMAIL/FOUNDER_PASSWORD not set)
+PASS  CLEAN test shift cancelled and test invites revoked
+
+ALL PASSED

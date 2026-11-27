@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { getInvites, getMembers, inviteMember, removeMember, revokeInvite } from '../lib/api'
 import { toAppError } from '../lib/errors'
@@ -50,7 +50,7 @@ export function OrgTeamPage() {
 
   return (
     <>
-      <PageHeader title="Team" subtitle={<Link className="text-brand-700 underline" to={`/org/${orgId}`}>Back to organization</Link>} />
+      <PageHeader title="Team" subtitle="Organization admins and coordinators. New staff join by accepting an email invite." />
       <div aria-live="polite">{notice && <div className="mb-4"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
       <div className="grid gap-6 lg:grid-cols-2">
         <section aria-labelledby="mem-h">

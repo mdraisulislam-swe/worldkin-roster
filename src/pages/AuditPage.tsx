@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { getAuditLog } from '../lib/api'
 import { toAppError } from '../lib/errors'
 import { formatDateTime } from '../lib/format'
@@ -15,19 +15,16 @@ export function AuditPage() {
   const q = useQuery({ queryKey: ['audit', orgId ?? 'all'], queryFn: () => getAuditLog(orgId) })
   return (
     <>
-      <PageHeader title="Audit log" subtitle={
-        orgId ? <Link className="text-brand-700 underline" to={`/org/${orgId}`}>Back to organization</Link>
-          : <Link className="text-brand-700 underline" to="/admin">Back to administration</Link>
-      } />
+      <PageHeader title="Audit log" subtitle={orgId ? 'Every change to this organization’s data, with who made it.' : 'Platform-wide change history.'} />
       <p className="mb-4 text-sm text-ink-500">Latest 100 changes. Entries cannot be edited or deleted. "operator" means a change made directly by the platform owner.</p>
       {q.isPending && <LoadingState />}
       {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}
       {q.data?.length === 0 && <EmptyState title="No audit entries yet" />}
       {q.data && q.data.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-black/10 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-neutral-100 bg-white shadow-[0_1px_2px_rgba(20,26,34,0.04)]">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">Audit log entries</caption>
-            <thead className="bg-black/5 text-xs uppercase text-ink-500">
+            <thead className="border-b border-neutral-100 bg-surface text-xs uppercase tracking-wide text-ink-500">
               <tr><th scope="col" className="px-3 py-2">When</th><th scope="col" className="px-3 py-2">Action</th><th scope="col" className="px-3 py-2">Entity</th><th scope="col" className="px-3 py-2">Actor</th><th scope="col" className="px-3 py-2">Details</th></tr>
             </thead>
             <tbody>

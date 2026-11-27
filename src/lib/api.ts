@@ -5,6 +5,7 @@
  */
 import { db } from './supabase'
 import { AppError, toAppError, unwrap } from './errors'
+import { isUuid } from './ids'
 import { joinKeys } from './idempotency'
 import type { Enums, Json, Tables } from './database.types'
 
@@ -44,6 +45,8 @@ export async function searchOpportunities(p: SearchParams) {
 }
 
 export async function getOpportunity(id: string) {
+  // A malformed id is "not available", never a raw database error.
+  if (!isUuid(id)) throw new AppError('This opportunity is not available.', 'NOT_FOUND')
   const row = unwrap(
     await db().from('opportunities').select('*, organizations(id, name, slug, status, website)').eq('id', id).maybeSingle(),
   )
@@ -89,7 +92,7 @@ export async function getMyRecord(userId: string) {
   return unwrap(
     await db()
       .from('participation_records')
-      .select('id, hours, verified_at, note, organizations(name), shifts(starts_at, ends_at, opportunities(title, cause))')
+      .select('id, hours, verified_at, note, organizations(name), shifts(starts_at, ends_at, opportunities(title, cause, compensation_type))')
       .eq('volunteer_id', userId)
       .order('verified_at', { ascending: false }),
   )
@@ -124,6 +127,7 @@ export async function createOrganization(v: {
 }
 
 export async function getOrganization(orgId: string) {
+  if (!isUuid(orgId)) throw new AppError('Organization not found or not accessible.', 'NOT_FOUND')
   const row = unwrap(await db().from('organizations').select('*').eq('id', orgId).maybeSingle())
   if (!row) throw new AppError('Organization not found or not accessible.', 'NOT_FOUND')
   return row
@@ -147,13 +151,17 @@ export type OpportunityInput = Pick<
   Tables<'opportunities'>,
   'title' | 'description' | 'cause' | 'mode' | 'country_code' | 'city' | 'skills_wanted' | 'requirements' | 'requires_skill_match' | 'is_sensitive'
 >
-export async function createOpportunity(orgId: string, v: OpportunityInput, publish: boolean) {
-  return unwrap(
-    await db().from('opportunities').insert({ ...v, org_id: orgId, status: publish ? 'published' : 'draft' }).select('id').single(),
-  )
+/** wk06 columns (compensation, selection mode, deadline) — not in the generated types until regeneration. */
+export type OpportunityExtraInput = {
+  compensation_type: 'voluntary' | 'stipend' | 'paid'; compensation_details: string | null
+  selection_mode: 'open' | 'application'; application_deadline: string | null
 }
-export async function updateOpportunity(id: string, v: Partial<OpportunityInput> & { status?: Enums<'opportunity_status'> }) {
-  return unwrap(await db().from('opportunities').update(v).eq('id', id).select('id').single())
+export async function createOpportunity(orgId: string, v: OpportunityInput & Partial<OpportunityExtraInput>, publish: boolean) {
+  const row = { ...v, org_id: orgId, status: publish ? 'published' : 'draft' }
+  return unwrap(await db().from('opportunities').insert(row as never).select('id').single())
+}
+export async function updateOpportunity(id: string, v: Partial<OpportunityInput & OpportunityExtraInput> & { status?: Enums<'opportunity_status'> }) {
+  return unwrap(await db().from('opportunities').update(v as never).eq('id', id).select('id').single())
 }
 
 export async function getOpportunityShifts(opportunityId: string) {
@@ -169,6 +177,7 @@ export async function createShift(v: {
 }
 
 export async function getShift(shiftId: string) {
+  if (!isUuid(shiftId)) throw new AppError('Shift not found or not accessible.', 'NOT_FOUND')
   const row = unwrap(await db().from('shifts').select('*, opportunities(id, title)').eq('id', shiftId).maybeSingle())
   if (!row) throw new AppError('Shift not found or not accessible.', 'NOT_FOUND')
   return row

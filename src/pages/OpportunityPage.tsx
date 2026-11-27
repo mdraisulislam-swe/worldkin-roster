@@ -9,6 +9,11 @@ import { useNow } from '../lib/useNow'
 import { CAUSE_LABELS, MODE_LABELS, formatShiftWindow, matchingSkills, shiftHours, startsIn } from '../lib/format'
 import { Alert, Button, CapacityMeter, Card, EmptyState, ErrorState, LoadingState, PageHeader, StatusBadge } from '../components/ui'
 import { useDialog } from '../components/dialog'
+import { ApplyPanel } from '../components/ApplyPanel'
+import { CompensationBadge } from '../components/cards'
+import { CoverBand } from '../components/CoverBand'
+import { Icon } from '../components/Icon'
+import { COMPENSATION_LABELS, type OpportunityExtra } from '../lib/platform'
 
 export function OpportunityPage() {
   const { id = '' } = useParams()
@@ -45,8 +50,19 @@ export function OpportunityPage() {
   })
 
   if (opp.isPending) return <LoadingState />
-  if (opp.isError) return <ErrorState message={toAppError(opp.error).message} onRetry={() => opp.refetch()} />
-  const o = opp.data
+  if (opp.isError) {
+    const err = toAppError(opp.error)
+    // A missing, private or malformed listing is a page of its own (with a heading), not a retryable error.
+    if (err.code === 'NOT_FOUND') return (
+      <>
+        <PageHeader title="Opportunity not available" />
+        <EmptyState title="This listing can't be shown">It may have closed, been removed, or the link may be wrong. <Link className="text-brand-700 underline" to="/explore">Explore opportunities</Link></EmptyState>
+      </>
+    )
+    return <ErrorState message={err.message} onRetry={() => opp.refetch()} />
+  }
+  const o = opp.data as typeof opp.data & OpportunityExtra
+  const byApplication = o.selection_mode === 'application'
   const matches = profile ? matchingSkills(profile.skills, o.skills_wanted) : []
   const place = [o.city, o.country_code].filter(Boolean).join(', ')
 
@@ -61,9 +77,18 @@ export function OpportunityPage() {
 
   return (
     <>
+      <CoverBand cause={o.cause} className="mb-6 h-40 rounded-[20px] sm:h-52" />
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        <CompensationBadge type={o.compensation_type} />
+        <span className="inline-flex items-center gap-1 rounded-full border border-neutral-100 bg-white px-2.5 py-0.5 text-xs font-semibold text-ink-700"><Icon name={byApplication ? 'file-text' : 'check'} size={13} />{byApplication ? 'Apply · selection' : 'Instant sign-up'}</span>
+      </div>
       <PageHeader
         title={o.title}
-        subtitle={<>{CAUSE_LABELS[o.cause]} · {MODE_LABELS[o.mode]}{place ? ` · ${place}` : ''}</>}
+        subtitle={<span className="flex flex-wrap gap-x-4 gap-y-1">
+          <span className="inline-flex items-center gap-1.5"><Icon name="map-pin" size={15} />{place || MODE_LABELS[o.mode]}</span>
+          <span className="inline-flex items-center gap-1.5"><Icon name="globe" size={15} />{MODE_LABELS[o.mode]}</span>
+          <span className="inline-flex items-center gap-1.5"><Icon name="heart" size={15} />{CAUSE_LABELS[o.cause]}</span>
+        </span>}
         actions={<Button variant="secondary" onClick={copyLink}>Copy link</Button>}
       />
       <div className="grid gap-6 lg:grid-cols-3">
@@ -72,6 +97,29 @@ export function OpportunityPage() {
             <h2 className="mb-2 font-semibold">About this opportunity</h2>
             <p className="whitespace-pre-line text-ink-700">{o.description}</p>
             {o.is_sensitive && <div className="mt-4"><Alert tone="warning">Sensitive opportunity. Location details are shared only by the coordinator after confirmation.</Alert></div>}
+          </Card>
+          <Card>
+            <h2 className="mb-2 flex flex-wrap items-center gap-2 font-semibold">Compensation <CompensationBadge type={o.compensation_type} /></h2>
+            {o.compensation_type === 'voluntary'
+              ? <p className="text-sm text-ink-700">This is an unpaid, voluntary role.</p>
+              : <p className="text-sm text-ink-700"><span className="font-medium">{COMPENSATION_LABELS[o.compensation_type]}:</span> {o.compensation_details}</p>}
+            <p className="mt-2 text-sm text-ink-500">{byApplication ? 'Selection by application: the organization reviews applicants and sends offers.' : 'Open sign-up: join any shift with free seats.'}</p>
+            {o.moderation_reason && <div className="mt-3"><Alert tone="warning">Closed by Worldkin moderators: {o.moderation_reason}</Alert></div>}
+            <p className="mt-3 border-t border-black/5 pt-3 text-xs text-ink-500">
+              Something misleading about this listing (pay, location, organization)?{' '}
+              <Link className="text-brand-700 underline" to={`/me/complaints?org=${o.org_id}&opportunity=${o.id}`}>Report it to Worldkin moderators</Link>.
+            </p>
+          </Card>
+          <Card>
+            <h2 className="mb-3 font-semibold">What happens next</h2>
+            <ol className="flex flex-col gap-2 text-sm">
+              {(byApplication ? APPLICATION_STEPS : OPEN_STEPS).map((step, i) => (
+                <li key={step} className="flex gap-3">
+                  <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-800">{i + 1}</span>
+                  <span className="text-ink-700">{step}</span>
+                </li>
+              ))}
+            </ol>
           </Card>
           {(o.skills_wanted.length > 0 || o.requirements) && (
             <Card>
@@ -108,6 +156,7 @@ export function OpportunityPage() {
         </div>
         <section aria-labelledby="shifts-h">
           <h2 id="shifts-h" className="mb-3 text-lg font-semibold">Shifts</h2>
+          {byApplication && o.status === 'published' && <ApplyPanel opportunityId={o.id} deadline={o.application_deadline} now={now} />}
           <div aria-live="polite">{notice && <div className="mb-3"><Alert tone={notice.tone}>{notice.text}</Alert></div>}</div>
           {shifts.isPending && <LoadingState label="Loading shifts" />}
           {shifts.isError && <ErrorState message={toAppError(shifts.error).message} onRetry={() => shifts.refetch()} />}
@@ -128,6 +177,8 @@ export function OpportunityPage() {
                       {s.my_status && <StatusBadge status={s.my_status} />}
                       {s.status === 'cancelled' ? <StatusBadge status="cancelled" /> : started ? (
                         <span className="text-xs text-ink-500">Started</span>
+                      ) : byApplication && !s.my_status ? (
+                        <span className="text-xs text-ink-500">Places are assigned through offers</span>
                       ) : !session ? (
                         <Link to={`/signin?next=${encodeURIComponent(location.pathname)}`} className="text-sm text-brand-700 underline">Sign in to join</Link>
                       ) : active ? (
@@ -160,3 +211,19 @@ export function OpportunityPage() {
     </>
   )
 }
+
+const APPLICATION_STEPS = [
+  'Sign in and apply with your profile (one active application per opportunity).',
+  'The organization reviews applicants and may move you to "under review".',
+  'If selected, you receive an offer for a specific shift — accept or decline within 72 hours.',
+  'Accepting books your seat safely; if the shift filled meanwhile you join the waitlist in order.',
+  'After the shift, organization staff confirm your attendance and hours.',
+  'Verified hours appear on your certificate and experience passport.',
+]
+const OPEN_STEPS = [
+  'Sign in and join any shift with free seats — no application needed.',
+  'If a shift is full you join a first-come waitlist and are promoted automatically when a seat opens.',
+  'Add the shift to your calendar; you can cancel before it starts.',
+  'After the shift, organization staff confirm your attendance and hours.',
+  'Verified hours appear on your certificate and experience passport.',
+]

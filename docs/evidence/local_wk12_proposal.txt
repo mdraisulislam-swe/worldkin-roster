@@ -1,0 +1,35 @@
+# wk12 proposal — local PGlite run, 2026-11-27T05:57Z. Live database NOT touched.
+# Command: node supabase/tests/local-pglite/wk12_proposal_tests.mjs supabase
+PASS SETUP two organizations created
+PASS SETUP2 org1 verified by platform admin
+PASS A1 volunteer opts in through the RPC
+PASS A2 coordinates stored rounded to 0.05° (~5 km)
+PASS A3 another user cannot read emergency profiles
+PASS A4 direct insert into emergency_profiles is denied
+PASS A5 anonymous visitor cannot read profiles table
+PASS A6 k-anonymity: city with 2 volunteers is hidden from public counts
+PASS A7 with 3 opted-in volunteers the public sees only a city count
+PASS A8 opting out removes the volunteer from counts
+PASS B1 unverified organization cannot post
+PASS B2 non-member cannot post for another organization
+PASS B3 anonymous cannot call the RPC
+PASS B4 verified organization member posts a request
+PASS B5 only opted-in matching volunteers are notified (v1, v2; not v3 who opted out, not v4)
+PASS B6 rate limit: same person cannot post twice within an hour
+PASS B7 expiry over 72 h is rejected by the table check
+PASS B8 direct insert into requests is denied for users
+PASS B9 signed-in volunteer can see the live request
+PASS B10 volunteer who did not opt in cannot respond
+PASS B11 responding is idempotent (one row)
+PASS B12 organization sees responder first name only
+PASS B13 another volunteer cannot see responses of others
+PASS B14 non-member gets no responders
+PASS B15 invalid transition open -> resolved rejected
+PASS B16 non-member cannot change status
+PASS B17 open -> responders_found -> resolved
+PASS B18 resolved is final
+PASS B19 status history recorded (3 events)
+PASS B20 closed request hidden from other volunteers
+PASS B21 cannot respond to a closed request
+PASS R1 rollback removes all wk12 objects
+32/32 passed

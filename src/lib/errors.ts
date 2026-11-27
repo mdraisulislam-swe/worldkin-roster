@@ -43,6 +43,24 @@ export const WK_MESSAGES: Record<string, string> = {
   WK_SHIFT_IN_PAST: 'Shifts must start in the future.',
   WK_SHIFT_HAS_SIGNUPS: 'Shift times cannot change after volunteers have signed up.',
   WK_OPPORTUNITY_CLOSED: 'This opportunity is closed.',
+  WK_OPPORTUNITY_NOT_FOUND: 'This opportunity could not be found.',
+  WK_APPLICATION_REQUIRED: 'This opportunity selects volunteers by application. Apply first — the organization will send you an offer.',
+  WK_APPLICATION_NOT_REQUIRED: 'This opportunity has open sign-up. Join a shift directly.',
+  WK_APPLICATION_DEADLINE_PASSED: 'The application deadline has passed.',
+  WK_ALREADY_APPLIED: 'You already have an active application for this opportunity.',
+  WK_APPLICATION_NOT_FOUND: 'This application could not be found.',
+  WK_OFFER_NOT_FOUND: 'This offer could not be found.',
+  WK_OFFER_EXISTS: 'This applicant already has an open or accepted offer.',
+  WK_OFFER_EXPIRED: 'This offer has expired and can no longer be accepted.',
+  WK_OFFER_REVOKED: 'The organization withdrew this offer.',
+  WK_OFFER_DECLINED: 'This offer was declined.',
+  WK_SHIFT_MISMATCH: 'That shift does not belong to this opportunity.',
+  WK_ACCOUNT_SUSPENDED: 'Your account is suspended. Contact the Worldkin team if you think this is a mistake.',
+  WK_ALREADY_REVIEWED: 'You have already left feedback for this participation.',
+  WK_PARTICIPATION_NOT_FOUND: 'Feedback is only possible after verified participation.',
+  WK_TOO_MANY_COMPLAINTS: 'You have 5 open complaints. Please wait for a response before filing another.',
+  WK_COMPLAINT_NOT_FOUND: 'This complaint could not be found.',
+  WK_USER_NOT_FOUND: 'User not found.',
 }
 
 const SQLSTATE_MESSAGES: Record<string, string> = {
@@ -64,24 +82,36 @@ export class AppError extends Error {
   }
 }
 
-type Raw = { message?: unknown; code?: unknown; name?: unknown } | null | undefined
+type Raw = { message?: unknown; code?: unknown; name?: unknown; status?: unknown } | null | undefined
 
 export function toAppError(err: unknown): AppError {
   if (err instanceof AppError) return err
   const raw = err as Raw
   const message = typeof raw?.message === 'string' ? raw.message : ''
   const code = typeof raw?.code === 'string' ? raw.code : undefined
+  const status = typeof raw?.status === 'number' ? raw.status : undefined
+  const name = typeof raw?.name === 'string' ? raw.name : ''
 
   const wk = message.match(/\bWK_[A-Z_]+\b/)?.[0]
   if (wk) return new AppError(WK_MESSAGES[wk] ?? 'The request was rejected.', wk)
   if (code && SQLSTATE_MESSAGES[code]) return new AppError(SQLSTATE_MESSAGES[code], code)
+  if (name === 'TimeoutError' || name === 'AbortError' || /did not respond within|timed? ?out/i.test(message)) {
+    return new AppError('The service is taking too long to respond. Check your connection and try again in a moment.', 'TIMEOUT', true)
+  }
+  if (status === 429 || /rate limit|too many requests/i.test(message) || code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit') {
+    return new AppError('Too many attempts. Please wait a few minutes and try again.', 'AUTH_RATE_LIMIT', true)
+  }
+  if (/error sending .*email|smtp|email.*(could not|failed).*send/i.test(message)) {
+    return new AppError('We could not send the email right now. Please use "Resend" in a few minutes; if it keeps failing, try again later.', 'EMAIL_DELIVERY', true)
+  }
   if (err instanceof TypeError || /fetch|network|failed to fetch/i.test(message)) {
     return new AppError('Network problem. Check your connection and try again.', 'NETWORK', true)
   }
   if (/invalid login credentials/i.test(message)) return new AppError('Email or password is incorrect.', 'AUTH_INVALID')
-  if (/email not confirmed/i.test(message) || code === 'email_not_confirmed') return new AppError('Please confirm your email address first. Check your inbox, or send a new confirmation link below.', 'AUTH_UNCONFIRMED')
-  if (/rate limit|over_email_send_rate_limit/i.test(message) || code === 'over_email_send_rate_limit') return new AppError('Too many emails were requested. Please wait a few minutes and try again.', 'AUTH_RATE_LIMIT', true)
+  if (/email not confirmed/i.test(message) || code === 'email_not_confirmed') return new AppError('Please verify your email address first. Enter the code we emailed you, or request a new one below.', 'AUTH_UNCONFIRMED')
+  if (code === 'otp_expired' || /token has expired or is invalid|otp.*(expired|invalid)/i.test(message)) return new AppError('That code is incorrect or has expired. Check the newest email, or request a new code.', 'AUTH_OTP_INVALID')
   if (/user already registered/i.test(message) || code === 'user_already_exists') return new AppError('An account with this email may already exist. Try signing in instead.', 'AUTH_EXISTS')
+  if (status !== undefined && status >= 500) return new AppError('The service is temporarily unavailable. Please try again in a few minutes.', 'SERVICE_UNAVAILABLE', true)
   return new AppError(message || 'Something went wrong. Please try again.', code, true)
 }
 

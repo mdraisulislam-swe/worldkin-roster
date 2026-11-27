@@ -1,0 +1,186 @@
+import { useQuery } from '@tanstack/react-query'
+import { Link, useParams, useSearchParams } from 'react-router'
+import { Constants, type Enums } from '../lib/database.types'
+import { CAUSE_LABELS, formatDateTime } from '../lib/format'
+import { ORG_TYPES, ORG_TYPE_LABELS, getOrgFeedback, getOrganizationBySlug, listOrganizations, searchOpportunities, type OrgType } from '../lib/platform'
+import { toAppError } from '../lib/errors'
+import { useNow } from '../lib/useNow'
+import { CardSkeletons, OpportunityCardView, OrgCardView, OrgLogo } from '../components/cards'
+import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Select, StatusBadge, TextField } from '../components/ui'
+import { eventTitle, getRecentEvents, getUpcomingEvents } from '../lib/events'
+import { CoverBand } from '../components/CoverBand'
+import { Icon } from '../components/Icon'
+import { countryName } from '../lib/geo'
+
+const shortDate = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+
+/** Public directory of verified organizations. */
+export function OrganizationsPage() {
+  const [params, setParams] = useSearchParams()
+  const page = Math.max(1, Number(params.get('page') ?? 1) || 1)
+  const filters = {
+    query: params.get('q') ?? '',
+    country: params.get('country') ?? '',
+    cause: (params.get('cause') || undefined) as Enums<'cause_category'> | undefined,
+    orgType: (params.get('type') || undefined) as OrgType | undefined,
+    page,
+  }
+  const q = useQuery({ queryKey: ['orgs', filters], queryFn: () => listOrganizations(filters) })
+  const totalPages = q.data ? Math.max(1, Math.ceil(q.data.total / q.data.pageSize)) : 1
+
+  return (
+    <>
+      <PageHeader title="Verified organizations" subtitle="NGOs, charities, community groups and university clubs reviewed by Worldkin administrators before they can publish." />
+      <Card className="mb-6">
+        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" role="search" onSubmit={(e) => {
+          e.preventDefault()
+          const f = new FormData(e.currentTarget); const n = new URLSearchParams()
+          for (const k of ['q', 'country', 'cause', 'type']) { const v = String(f.get(k) ?? '').trim(); if (v) n.set(k, k === 'country' ? v.toUpperCase() : v) }
+          setParams(n)
+        }}>
+          <div className="sm:col-span-2"><TextField label="Search" name="q" defaultValue={filters.query} placeholder="Name or mission" /></div>
+          <Select label="Cause" name="cause" defaultValue={filters.cause ?? ''} options={[{ value: '', label: 'All causes' }, ...Constants.public.Enums.cause_category.map((c) => ({ value: c, label: CAUSE_LABELS[c] }))]} />
+          <Select label="Type" name="type" defaultValue={filters.orgType ?? ''} options={[{ value: '', label: 'All types' }, ...ORG_TYPES.map((t) => ({ value: t, label: ORG_TYPE_LABELS[t] }))]} />
+          <TextField label="Country" name="country" defaultValue={filters.country} maxLength={2} placeholder="BD" />
+          <div className="sm:col-span-2 lg:col-span-5"><Button type="submit">Search</Button></div>
+        </form>
+      </Card>
+      {q.isPending && <CardSkeletons count={6} />}
+      {q.isError && <ErrorState message={toAppError(q.error).message} onRetry={() => q.refetch()} />}
+      {q.data && q.data.rows.length === 0 && <EmptyState title="No organizations match">Try another search or country.</EmptyState>}
+      {q.data && q.data.rows.length > 0 && (
+        <>
+          <p className="mb-3 text-sm text-ink-500" aria-live="polite">{q.data.total} organization{q.data.total === 1 ? '' : 's'}</p>
+          <ul className="grid gap-4 md:grid-cols-2">{q.data.rows.map((o) => <li key={o.id}><OrgCardView o={o} /></li>)}</ul>
+          <nav aria-label="Pagination" className="mt-6 flex items-center gap-3">
+            <Button variant="secondary" disabled={page <= 1} onClick={() => { params.set('page', String(page - 1)); setParams(params) }}>Previous</Button>
+            <span className="text-sm text-ink-500">Page {page} of {totalPages}</span>
+            <Button variant="secondary" disabled={page >= totalPages} onClick={() => { params.set('page', String(page + 1)); setParams(params) }}>Next</Button>
+          </nav>
+          <p className="mt-6 rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900">Organizations awaiting verification are not listed publicly and cannot publish opportunities.</p>
+        </>
+      )}
+    </>
+  )
+}
+
+/** Public organization profile: details, verification, published opportunities and participant feedback. */
+export function OrganizationProfilePage() {
+  const { slug = '' } = useParams()
+  const now = useNow()
+  const org = useQuery({ queryKey: ['org-public', slug], queryFn: () => getOrganizationBySlug(slug) })
+  const orgId = org.data?.id
+  const opps = useQuery({
+    queryKey: ['org-public-opps', orgId], enabled: !!orgId,
+    queryFn: async () => (await searchOpportunities({ orgId, pageSize: 50, sort: 'newest' })).rows,
+  })
+  const fb = useQuery({ queryKey: ['org-feedback', orgId], enabled: !!orgId, queryFn: () => getOrgFeedback(orgId!) })
+  // Public, RLS-filtered shifts of this organization's published opportunities.
+  const upcomingEv = useQuery({ queryKey: ['events', 'org', orgId], enabled: !!orgId, queryFn: () => getUpcomingEvents(Date.now(), { orgId, limit: 6 }) })
+  const recentEv = useQuery({ queryKey: ['events', 'org-recent', orgId], enabled: !!orgId, queryFn: () => getRecentEvents(Date.now(), { orgId, days: 180, limit: 6 }) })
+
+  if (org.isPending) return <LoadingState />
+  if (org.isError) return <ErrorState message={toAppError(org.error).message} onRetry={() => org.refetch()} />
+  const o = org.data
+  return (
+    <>
+      <p className="mb-3 text-sm text-ink-500"><Link className="hover:underline" to="/organizations">Organizations</Link> <span aria-hidden>/</span> {o.name}</p>
+      {/* Brand header (prototype A05): cover in the organization's cause colours, large logo, identity and trust marks. */}
+      <section aria-label="Organization identity" className="mb-6 overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-[0_1px_2px_rgba(20,26,34,0.04)]">
+        <CoverBand cause={o.cause} className="h-32 sm:h-44" />
+        <div className="flex flex-wrap items-end gap-4 px-5 pb-5 sm:px-7">
+          <div className="-mt-12 rounded-2xl border-4 border-white bg-white shadow sm:-mt-14"><OrgLogo name={o.name} url={o.logo_url} size={96} /></div>
+          <div className="min-w-0 flex-1 pt-3">
+            <h1 className="text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">{o.name}</h1>
+            <p className="mt-1 text-sm text-ink-500">{ORG_TYPE_LABELS[o.org_type]} · {CAUSE_LABELS[o.cause]} · {o.city ? `${o.city}, ` : ''}{countryName(o.country_code)}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {o.status === 'verified' ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-900"><Icon name="shield-check" size={14} />Verified by Worldkin</span> : <StatusBadge status={o.status} />}
+              {fb.data?.[0] && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">★ {fb.data[0].average_rating} from {fb.data[0].total_count} volunteer review{fb.data[0].total_count === 1 ? '' : 's'}</span>}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-3">
+            <a href="#opps-h" className="inline-flex min-h-11 items-center rounded-lg bg-brand-700 px-4 text-[15px] font-semibold text-white hover:bg-brand-800">See open opportunities</a>
+            {o.website && <a href={o.website} target="_blank" rel="noreferrer noopener" className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#d5d9d2] bg-white px-4 text-[15px] font-semibold text-ink-900 hover:border-brand-600">Website<Icon name="external-link" size={14} /></a>}
+          </div>
+        </div>
+      </section>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          {o.description && (
+            <Card>
+              <h2 className="mb-2 font-semibold">About</h2>
+              <p className="whitespace-pre-line text-ink-700">{o.description}</p>
+              <p className="mt-3 text-xs text-ink-500">Written by the organization.</p>
+            </Card>
+          )}
+          <section aria-labelledby="ev-h">
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <h2 id="ev-h" className="text-lg font-semibold">Upcoming events</h2>
+              <Link className="text-sm text-brand-700 underline" to="/events">All events</Link>
+            </div>
+            {upcomingEv.isPending ? <CardSkeletons count={1} /> : upcomingEv.data && upcomingEv.data.length > 0 ? (
+              <ul className="flex flex-col gap-2">
+                {upcomingEv.data.map((e) => (
+                  <li key={e.id}>
+                    <Link to={`/events/${e.id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-black/10 bg-white px-4 py-3 hover:border-brand-600">
+                      <span className="font-medium">{eventTitle(e)}</span>
+                      <span className="text-sm tabular-nums text-ink-500">{shortDate.format(new Date(e.starts_at))}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : <EmptyState title="No upcoming events scheduled" />}
+          </section>
+          <section aria-labelledby="opps-h">
+            <h2 id="opps-h" className="mb-3 text-lg font-semibold">Open opportunities</h2>
+            {opps.isPending ? <CardSkeletons count={2} /> : opps.data && opps.data.length > 0 ? (
+              <ul className="grid gap-4 md:grid-cols-2">{opps.data.map((x) => <li key={x.id}><OpportunityCardView o={x} now={now} /></li>)}</ul>
+            ) : <EmptyState title="No open opportunities right now" />}
+          </section>
+          <section aria-labelledby="fb-h">
+            <h2 id="fb-h" className="mb-3 text-lg font-semibold">Volunteer feedback</h2>
+            <p className="mb-3 text-sm text-ink-500">Only volunteers whose participation was verified can leave feedback.</p>
+            {fb.isPending ? <LoadingState label="Loading feedback" /> : fb.data && fb.data.length > 0 ? (
+              <ul className="flex flex-col gap-3">
+                {fb.data.map((f) => (
+                  <li key={f.feedback_id}><Card>
+                    <p className="font-medium" aria-label={`${f.rating} out of 5`}>{'★'.repeat(f.rating)}<span className="text-ink-500">{'★'.repeat(5 - f.rating)}</span></p>
+                    {f.comment && <p className="mt-1 text-ink-700">{f.comment}</p>}
+                    <p className="mt-1 text-xs text-ink-500">{f.reviewer_first_name} · {f.opportunity_title} · {formatDateTime(f.created_at)}</p>
+                  </Card></li>
+                ))}
+              </ul>
+            ) : <EmptyState title="No feedback yet" />}
+          </section>
+        </div>
+        <aside className="flex flex-col gap-4">
+          <Card>
+            <h2 className="mb-2 font-semibold">Trust record</h2>
+            <ul className="flex flex-col gap-2 text-sm">
+              <li>{o.status === 'verified'
+                ? <><span className="font-medium text-emerald-800">✓ Verified by Worldkin</span>{o.reviewed_at ? <span className="text-ink-500"> on {new Date(o.reviewed_at).toLocaleDateString()}</span> : null}. Reviewed before it could publish opportunities.</>
+                : <>Not verified yet — it cannot publish opportunities until reviewed.</>}</li>
+              {fb.data?.[0] && <li>{fb.data[0].total_count} review{fb.data[0].total_count === 1 ? '' : 's'} from volunteers whose attendance was verified.</li>}
+              {recentEv.data && recentEv.data.length > 0 && <li>{recentEv.data.length} public event{recentEv.data.length === 1 ? '' : 's'} held in the last 6 months.</li>}
+            </ul>
+            <p className="mt-3 text-xs text-ink-500">Contact details and descriptions are provided by the organization.</p>
+          </Card>
+          <Card>
+            <h2 className="mb-2 font-semibold">Contact</h2>
+            <dl className="flex flex-col gap-1 text-sm">
+              {o.website && <div><dt className="sr-only">Website</dt><dd><a className="text-brand-700 underline" href={o.website} target="_blank" rel="noreferrer noopener">Website</a></dd></div>}
+              {o.official_email && <div><dt className="inline text-ink-500">Email: </dt><dd className="inline">{o.official_email}</dd></div>}
+              {o.phone && <div><dt className="inline text-ink-500">Phone: </dt><dd className="inline">{o.phone}</dd></div>}
+              <div><dt className="inline text-ink-500">On Worldkin since: </dt><dd className="inline">{formatDateTime(o.created_at)}</dd></div>
+            </dl>
+          </Card>
+          <Card>
+            <h2 className="mb-1 font-semibold">Concern about this organization?</h2>
+            <p className="text-sm text-ink-700">Reports go privately to Worldkin administrators, not to the organization.</p>
+            <Link className="mt-2 inline-block text-sm text-brand-700 underline" to={`/me/complaints?org=${o.id}`}>Report privately</Link>
+          </Card>
+        </aside>
+      </div>
+    </>
+  )
+}

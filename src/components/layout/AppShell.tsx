@@ -2,29 +2,48 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { CONFIRM_PATH, readAuthRedirectError } from '../../lib/authRedirect'
+import { useQuery } from '@tanstack/react-query'
+import { getUnreadCount } from '../../lib/platform'
 import { LoadingState } from '../ui'
+import { Icon } from '../Icon'
+import { workspaceChrome } from '../../lib/workspace'
+import { REPOSITORY_URL, SOCIAL_LINKS, type SocialKey } from '../../lib/siteContent'
 
 const linkCls = ({ isActive }: { isActive: boolean }) =>
-  `rounded-md px-2.5 py-1.5 text-sm ${isActive ? 'bg-brand-50 font-medium text-brand-800' : 'text-ink-700 hover:bg-black/5'}`
+  `rounded-lg px-3 py-2 text-[14.5px] font-medium ${isActive ? 'bg-brand-50 text-brand-700' : 'text-ink-700 hover:bg-neutral-100'}`
 
 export function AppShell() {
-  const { session, profile, memberships, isPlatformAdmin, signOut } = useAuth()
+  const { loading, session, profile, memberships, isPlatformAdmin, signOut } = useAuth()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  // Workspace pages (volunteer, organization, admin) draw their own app shell; see lib/workspace.ts.
+  const chrome = workspaceChrome({ pathname, loading, signedIn: !!session, isPlatformAdmin, memberOrgIds: memberships.map((m) => m.org_id) })
+  const workspace = chrome !== 'public'
+  const uid = session?.user.id
+  // Unread count: small HEAD count query, refreshed every minute and on navigation.
+  const unreadQ = useQuery({ queryKey: ['unread', uid, pathname], queryFn: () => getUnreadCount(uid!), enabled: !!uid, refetchInterval: 60_000, staleTime: 15_000 })
+  const unread = unreadQ.data ?? 0
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
+  useEffect(() => {
+    const up = () => setOnline(true), down = () => setOnline(false)
+    window.addEventListener('online', up); window.addEventListener('offline', down)
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
+  }, [])
   const mainRef = useRef<HTMLElement>(null)
   const firstRender = useRef(true)
   // After client-side navigation, move focus to the new page content so keyboard
   // and screen-reader users start at the top of it (not on the old link).
   useEffect(() => {
     if (firstRender.current) { firstRender.current = false; return }
-    mainRef.current?.focus({ preventScroll: true })
+    // Workspace pages render their own <main id="main"> inside the shell.
+    ;(document.getElementById('main') ?? mainRef.current)?.focus({ preventScroll: true })
     window.scrollTo(0, 0)
   }, [pathname])
   // A confirmation link that fails (expired / already used) may land on any page,
   // e.g. the Site URL root. Route it to the confirmation page, which explains it.
   useEffect(() => {
-    if (pathname !== CONFIRM_PATH && readAuthRedirectError(window.location.hash, '')) {
+    if (pathname !== CONFIRM_PATH && pathname !== '/auth/reset' && readAuthRedirectError(window.location.hash, '')) {
       navigate(CONFIRM_PATH + window.location.hash, { replace: true })
     }
   }, [pathname, navigate])
@@ -46,10 +65,13 @@ export function AppShell() {
   const nav = (
     <>
       <NavLink to="/explore" className={linkCls} onClick={() => setOpen(false)}>Explore</NavLink>
-      {session && <NavLink to="/me" className={linkCls} onClick={() => setOpen(false)}>My shifts</NavLink>}
+      <NavLink to="/events" className={linkCls} onClick={() => setOpen(false)}>Events</NavLink>
+      <NavLink to="/organizations" end className={linkCls} onClick={() => setOpen(false)}>Organizations</NavLink>
+      <NavLink to="/map" className={linkCls} onClick={() => setOpen(false)}>Map</NavLink>
+      {session && <NavLink to="/me" className={linkCls} onClick={() => setOpen(false)}>My dashboard</NavLink>}
       {session && (
         <NavLink to="/orgs" className={linkCls} onClick={() => setOpen(false)}>
-          Organizations{memberships.length ? ` (${memberships.length})` : ''}
+          My organizations{memberships.length ? ` (${memberships.length})` : ''}
         </NavLink>
       )}
       {isPlatformAdmin && <NavLink to="/admin" className={linkCls} onClick={() => setOpen(false)}>Admin</NavLink>}
@@ -61,16 +83,20 @@ export function AppShell() {
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2 focus:shadow">
         Skip to main content
       </a>
-      <header className="border-b border-black/10 bg-white">
+      {!workspace && <header className="sticky top-0 z-40 border-b border-neutral-100 bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link to="/" className="flex shrink-0 items-center gap-2 font-semibold text-ink-900">
-            <img src="/favicon.svg" alt="" width={28} height={28} />
+          <Link to="/" className="flex shrink-0 items-center gap-2.5 font-display text-lg font-bold text-forest-900">
+            <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-brand-700 text-white"><Icon name="users" size={18} /></span>
             <span>Worldkin Roster</span>
           </Link>
           <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">{nav}</nav>
           <div className="hidden items-center gap-2 md:flex">
             {session ? (
               <>
+                <Link to="/me/notifications" className="relative grid h-10 w-10 place-items-center rounded-lg text-ink-700 hover:bg-neutral-100" aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}>
+                  <Icon name="bell" />
+                  {unread > 0 && <span aria-hidden className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-rose-600 px-1 text-center text-[10px] font-semibold leading-4 text-white">{unread > 9 ? '9+' : unread}</span>}
+                </Link>
                 <Link to="/me/profile" className="max-w-40 truncate text-sm text-ink-700 hover:underline">{profile?.full_name ?? 'Profile'}</Link>
                 <button type="button" className="rounded-md px-2.5 py-1.5 text-sm text-ink-700 hover:bg-black/5"
                   onClick={async () => { await signOut(); navigate('/') }}>
@@ -79,14 +105,14 @@ export function AppShell() {
               </>
             ) : (
               <>
-                <Link to="/signin" className="rounded-md px-2.5 py-1.5 text-sm text-ink-700 hover:bg-black/5">Sign in</Link>
-                <Link to="/signup" className="rounded-md bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800">Join</Link>
+                <Link to="/signin" className="rounded-lg px-3 py-2 text-[14.5px] font-medium text-brand-700 hover:bg-brand-50">Sign in</Link>
+                <Link to="/join" className="rounded-lg bg-brand-700 px-4 py-2 text-[14.5px] font-semibold text-white hover:bg-brand-800">Join</Link>
               </>
             )}
           </div>
-          <button type="button" className="rounded-md border border-black/15 px-3 py-1.5 text-sm md:hidden"
-            aria-expanded={open} aria-controls="mobile-nav" onClick={() => setOpen((v) => !v)}>
-            Menu
+          <button type="button" className="grid h-10 w-10 place-items-center rounded-lg border border-neutral-100 bg-white md:hidden"
+            aria-expanded={open} aria-controls="mobile-nav" aria-label={open ? 'Close menu' : 'Menu'} onClick={() => setOpen((v) => !v)}>
+            <Icon name={open ? 'x' : 'menu'} />
           </button>
         </div>
         {open && (
@@ -94,6 +120,7 @@ export function AppShell() {
             {nav}
             {session ? (
               <>
+                <NavLink to="/me/notifications" className={linkCls} onClick={() => setOpen(false)}>Notifications{unread ? ` (${unread})` : ''}</NavLink>
                 <NavLink to="/me/profile" className={linkCls} onClick={() => setOpen(false)}>Profile</NavLink>
                 <button type="button" className="rounded-md px-2.5 py-1.5 text-left text-sm text-ink-700"
                   onClick={async () => { setOpen(false); await signOut(); navigate('/') }}>Sign out</button>
@@ -101,20 +128,87 @@ export function AppShell() {
             ) : (
               <>
                 <NavLink to="/signin" className={linkCls} onClick={() => setOpen(false)}>Sign in</NavLink>
-                <NavLink to="/signup" className={linkCls} onClick={() => setOpen(false)}>Join</NavLink>
+                <NavLink to="/join" className={linkCls} onClick={() => setOpen(false)}>Join</NavLink>
               </>
             )}
           </nav>
         )}
-      </header>
-      <main id="main" ref={mainRef} tabIndex={-1} className="outline-none mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
-        <Suspense fallback={<LoadingState />}>
-          <Outlet />
-        </Suspense>
-      </main>
-      <footer className="border-t border-black/10 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-ink-500 sm:px-6">Worldkin Roster · Everyone is kin.</div>
-      </footer>
+      </header>}
+      {!online && (
+        <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">
+          You are offline. You can keep browsing what is loaded; changes will need a connection. The page updates automatically when you are back online.
+        </div>
+      )}
+      {workspace ? (
+        <section ref={mainRef} className="flex flex-1 flex-col">
+          <Suspense fallback={<LoadingState />}>
+            <Outlet />
+          </Suspense>
+        </section>
+      ) : (
+        <main id="main" ref={mainRef} tabIndex={-1} className="outline-none mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+          <Suspense fallback={<LoadingState />}>
+            <Outlet />
+          </Suspense>
+        </main>
+      )}
+      {!workspace && <footer className="bg-forest-900 text-sage-200">
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 text-sm sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+          <div>
+            <p className="flex items-center gap-2 font-semibold text-white"><img src="/favicon.svg" alt="" width={20} height={20} />Worldkin Roster</p>
+            <p className="mt-2 text-sage-200/80">Everyone is kin. Discover opportunities with verified organizations and build a record of experience they confirm.</p>
+            <SocialLinks />
+          </div>
+          <nav aria-label="Discover" className="flex flex-col gap-2">
+            <p className="font-semibold text-white">Discover</p>
+            <Link className="text-brand-50 hover:underline" to="/explore">Explore opportunities</Link>
+            <Link className="text-brand-50 hover:underline" to="/events">Upcoming events</Link>
+            <Link className="text-brand-50 hover:underline" to="/organizations">Verified organizations</Link>
+            <Link className="text-brand-50 hover:underline" to="/map">Map</Link>
+            <Link className="text-brand-50 hover:underline" to="/media">Stories &amp; media</Link>
+          </nav>
+          <nav aria-label="Get started" className="flex flex-col gap-2">
+            <p className="font-semibold text-white">Get started</p>
+            <Link className="text-brand-50 hover:underline" to="/signup?as=volunteer">Join as a volunteer</Link>
+            <Link className="text-brand-50 hover:underline" to="/signup?as=organization">Register an organization</Link>
+            <Link className="text-brand-50 hover:underline" to="/emergency">Emergency Volunteer Call</Link>
+          </nav>
+          <nav aria-label="Trust and safety" className="flex flex-col gap-2">
+            <p className="font-semibold text-white">Trust &amp; safety</p>
+            <span className="text-sage-200/80">Organizations are reviewed before they can publish. Hours are confirmed by organization staff.</span>
+            <Link className="text-brand-50 hover:underline" to="/me/complaints">Report a concern</Link>
+          </nav>
+        </div>
+        <div className="border-t border-white/10">
+          <p className="mx-auto flex max-w-6xl flex-wrap justify-between gap-2 px-4 py-4 text-xs text-sage-200/80 sm:px-6"><span>Worldkin Roster · HACK THE VIBE 2026 · World Problem Solver track</span>
+            <a className="inline-flex items-center gap-1.5 text-brand-50 hover:underline" href={REPOSITORY_URL} target="_blank" rel="noreferrer noopener"><Icon name="github" size={14} />Source code</a></p>
+        </div>
+      </footer>}
     </div>
+  )
+}
+
+/**
+ * Official social channels (prototype footer). A channel without an official URL in lib/siteContent.ts is
+ * shown dimmed and is not a link, so nothing points to "#" or to an invented page.
+ */
+function SocialLinks() {
+  return (
+    <ul aria-label="Official social channels" className="mt-4 flex flex-wrap gap-2">
+      {(Object.keys(SOCIAL_LINKS) as SocialKey[]).map((k) => {
+        const { label, url } = SOCIAL_LINKS[k]
+        return (
+          <li key={k}>
+            {url ? (
+              <a href={url} target="_blank" rel="noreferrer noopener" aria-label={`Worldkin on ${label}`} className="grid h-9 w-9 place-items-center rounded-lg bg-white/10 text-white hover:bg-white/20"><Icon name={k} size={17} /></a>
+            ) : (
+              <span title={`Official ${label} link — to be supplied by the Worldkin team`} className="grid h-9 w-9 cursor-not-allowed place-items-center rounded-lg bg-white/5 text-white/35">
+                <Icon name={k} size={17} /><span className="sr-only">{label} (link not available yet)</span>
+              </span>
+            )}
+          </li>
+        )
+      })}
+    </ul>
   )
 }

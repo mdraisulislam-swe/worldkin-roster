@@ -131,3 +131,52 @@ Root cause of `http://localhost:3000/#access_token=…`: the app already asked f
 | `/auth/confirmed` opened directly, signed out | "Confirm your email" + resend form |
 | Unit tests (`authRedirect.test.ts`) | redirect URL, open-redirect protection, error parsing, token-fragment detection — 29/29 total |
 | Live `worldkin-roster.vercel.app` (commit 332c678, before this fix) | key now correct (matches publishable key); `/signup`, `/signin`, `/explore`, `/login`, `/me` → **404** (vercel.json not deployed yet) |
+
+## 12. Applications platform — migration wk06 (26 Nov 2026, local only)
+
+Branch `feature/applications-platform`. **Not applied live** (awaiting approval); all results below are local.
+
+| Suite | Result | Evidence |
+|---|---|---|
+| wk06 suite (`supabase/tests/local-pglite/wk06_tests.mjs`) — organizations, privacy, opportunities, applications, offers, expiry, revoke/decline/reject/withdraw, direct-write denial, notifications, feedback, complaints, suspension, moderation, statistics, directory, search | **96/96** | `docs/evidence/local_wk06_tests.txt` |
+| Regression: original DB suite with wk01–wk06 | **99/99** | `docs/evidence/local_regression_99.txt` |
+| Demo seed with wk06 | 14/14 | local run |
+| Operator-path tamper tests T1–T4 | all blocked | local run |
+| Unit tests (incl. new validation tests) | 33/33 | `npm test` |
+| TypeScript / lint / build | 0 / 0 / OK | local |
+| Browser (production build vs live project without wk06) | new public pages render; missing RPCs degrade to "—"/error states; 375 px no overflow on home, join, sign-up, explore, organizations | manual run |
+
+Not testable locally: storage buckets/policies (`wk07`), real parallel transactions (PGlite is single-connection) — covered by `supabase/tests/live_applications_check.mjs` (C1 simultaneous last-seat acceptance, C2 no overbooking, C3 triple parallel acceptance of one offer) once wk06 is applied.
+
+## 13. Pre-apply safety review corrections (26 Nov 2026, local only)
+
+Production read-only review findings and fixes (nothing applied to production):
+
+| Fix | Change | Test |
+|---|---|---|
+| C1 | `organization_private.verification_docs` paths must be `<own org id>/<file>` (CHECK via `docs_in_org_folder`), so an organization cannot present another organization's document | C1a–C1c PASS |
+| C2 | suspension reason removed from `profiles` (team members can read profile rows); kept in `audit_logs` (platform admins) and in the user's notification | C2a–C2c PASS |
+| C4 | cancelling a shift revokes its pending offers (SKIP LOCKED — no deadlock with an acceptance in progress), application back to review, volunteer notified | C4a–C4c PASS |
+| R1 | `supabase/rollback/rollback_wk06.sql`, `rollback_wk07.sql` | RB1 schema after wk06 + rollback identical to wk01–wk05 (columns, constraints, indexes, triggers, function bodies, ACLs, policies, types); RB2 wk06 re-applies after rollback; RB3 double apply fails atomically, schema intact |
+
+Totals: wk06 suite **105/105**, regression **99/99**, seed 14/14, tamper T1–T4 blocked, rollback 3/3, unit 33/33, tsc/lint 0, build OK. Evidence: `docs/evidence/local_wk06_tests.txt`, `local_regression_99.txt`, `local_rollback_check.txt`.
+Not provable locally: storage policies (wk07) and Supabase's own `apply_migration` transaction handling.
+
+## 14. Production: wk06 and wk07 applied and verified (25 Nov 2026, UTC)
+
+Owner-approved, applied separately. Production `supabase_migrations.schema_migrations` stores exactly the committed files (MD5 `cb489c2f…` wk06, `aecd5f5b…` wk07; identical length). Post-apply catalog fingerprints (65 functions, constraints, 28 public policies, 34 triggers, 6 storage policies) equal a local build. Pre-existing rows unchanged (MD5 of profiles, organizations, opportunities, signups identical before/after). Security Advisor: no ERROR; WARN 0028 = 9, 0029 = 43 (intentional RPC entry points), wk07 adds none.
+
+| Live suite (after wk06) | Result | Evidence |
+|---|---|---|
+| A03 `live_security_check` | 20 PASS, 1 SKIP (L19 needs Founder sign-in) | `docs/evidence/live_wk06/security.txt` |
+| A05 `concurrency_check` × 3 | 13/13 each (run 3 first hit Auth HTTP 429 before any test; re-run after the window) | `a05_run1-3.txt` |
+| `live_applications_check` × 3 | 21/21 each — apply, duplicate-proof parallel apply, privacy, offers, **simultaneous last-seat acceptance → 1 confirmed + 1 waitlisted**, triple parallel acceptance → 1 signup, revoke, reject reason, direct-write denial | `apps_run1-3.txt` |
+| Post-test consistency | 0 overbooked shifts, 0 waitlist overflows, 0 accepted-offer/signup mismatches, 0 duplicate active applications/signups | read-only SQL |
+
+| Live storage (after wk07) | Result | Evidence |
+|---|---|---|
+| S1–S13 (upload/read isolation per role, no deletes, MIME limits, own-folder avatars, no anonymous listing) | 13 PASS | `docs/evidence/live_wk07/storage_run1.txt` |
+| S14 C1 spoofed document path | first run tested via upsert (refused by column grants, wrong reason); re-check with plain insert: PASS (HTTP 400, CHECK `organization_private_docs_in_own_folder`) | `s14_recheck.txt` |
+| S15 avatar cleanup | delete succeeded (row removed; origin returns 400); public URL briefly served from CDN cache — test now checks the origin | storage row query |
+
+Finding fixed: the app's `saveOrgPrivate` / `saveMyPhone` used upsert, which PostgREST turns into `ON CONFLICT DO UPDATE SET <key>` — refused because users may not update key columns. Replaced by update → insert → (retry update). Local proof UP1–UP5 in `wk06_tests.mjs` (110/110). The one test PDF was deleted by the owner in the Dashboard.

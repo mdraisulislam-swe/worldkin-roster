@@ -1,0 +1,24 @@
+# wk07 storage isolation (live)
+# run at 2026-11-25T19:44:54.779Z against https://ekkvwgohpzliwbmjnrth.supabase.co
+
+PASS  S1    org admin uploads a verification document to own org folder
+PASS  S2    coordinator of the same organization can read it
+PASS  S3    volunteer outside the organization cannot read it
+PASS  S4    anonymous visitor cannot read it
+PASS  S5    coordinator (not admin) cannot upload documents
+PASS  S6    org admin cannot upload into another organization folder
+PASS  S7    admin of the other organization cannot read this document
+PASS  S8    documents cannot be deleted by users (evidence kept)
+PASS  S9    disallowed file type is rejected by the bucket
+PASS  S10   volunteer uploads own profile photo
+PASS  S11   volunteer cannot write into another user folder
+PASS  S12   profile photos are public by design (public URL works)
+PASS  S13   anonymous visitors cannot list stored files
+FAIL  S14   document list cannot reference another organization’s file (C1)
+        -> {"status":403,"body":"{\"code\":\"42501\",\"details\":null,\"hint\":\"Grant the required privileges to the current role with: GRANT UPDATE ON public.organization_private TO authenticated;\",\"message\":\"permission denied for table organization_private\"}"}
+FAIL  S15   owner can delete own test avatar (cleanup)
+        -> {"own":{"status":200,"body":"{\"message\":\"Successfully deleted\"}"},"gone":200}
+
+Manual cleanup: delete org-docs/316259e3-afec-46c0-abc6-d5ab1135f798/wk-test-20261125194454.pdf in the Supabase Dashboard (users cannot delete documents by design).
+
+2 FAILED

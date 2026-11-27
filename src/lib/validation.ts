@@ -114,3 +114,59 @@ export function fieldErrors(error: z.ZodError): Record<string, string> {
   }
   return out
 }
+
+// ------------------------------------------------------------------ wk06 (applications platform)
+const optionalPhone = z
+  .string()
+  .trim()
+  .refine((v) => v === '' || /^\+?[0-9 ()-]{6,20}$/.test(v), 'Use digits, spaces, ( ) and - only, e.g. +880 1700 000000')
+  .transform((v) => (v === '' ? null : v))
+const optionalEmail = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .refine((v) => v === '' || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v), 'Enter a valid email address')
+  .transform((v) => (v === '' ? null : v))
+const listSchema = (max: number, label: string) =>
+  z.string().transform((v) => [...new Set(v.split(',').map((s) => s.trim()).filter(Boolean))]).refine((a) => a.length <= max, `At most ${max} ${label}`)
+
+/** Organization details beyond the original registration (public contact + private verification). */
+export const organizationDetailsSchema = z.object({
+  org_type: z.enum(['ngo', 'charity', 'community_group', 'social_enterprise', 'government', 'international', 'academic', 'other']),
+  city: optionalText(80),
+  phone: optionalPhone,
+  official_email: optionalEmail,
+  address: optionalText(300),
+  registration_id: optionalText(100),
+  representative_name: optionalText(120),
+  representative_role: optionalText(120),
+})
+
+export const volunteerProfileSchema = profileSchema.extend({
+  phone: optionalPhone,
+  education: optionalText(300),
+  interests: listSchema(20, 'interests'),
+  languages: listSchema(15, 'languages'),
+  availability: optionalText(300),
+  experience: optionalText(2000),
+})
+
+export const opportunityExtraSchema = z
+  .object({
+    compensation_type: z.enum(['voluntary', 'stipend', 'paid']),
+    compensation_details: optionalText(500),
+    selection_mode: z.enum(['open', 'application']),
+    application_deadline: z.string().trim().transform((v) => (v === '' ? null : new Date(v).toISOString())),
+  })
+  .refine((v) => v.compensation_type === 'voluntary' || (v.compensation_details ?? '').length >= 3, {
+    path: ['compensation_details'],
+    message: 'Describe the payment or stipend (amount, currency, frequency) — shown to volunteers before they apply',
+  })
+  .refine((v) => v.selection_mode === 'application' || v.application_deadline === null, {
+    path: ['application_deadline'],
+    message: 'A deadline applies only to opportunities that select by application',
+  })
+  .refine((v) => v.application_deadline === null || new Date(v.application_deadline).getTime() > Date.now(), {
+    path: ['application_deadline'],
+    message: 'The deadline must be in the future',
+  })

@@ -1,36 +1,97 @@
-# Worldkin Roster — Requirement Coverage (HACK THE VIBE 2026)
+# Worldkin Roster — Requirement Coverage (47 acceptance items)
 
-Statuses: **Not Started** · **Implemented** (code exists) · **Tested Locally** (run on localhost or local PostgreSQL, may call the live database) · **Verified Live** (proven on the live Supabase project through its public API, or on the production URL).
-A status is raised only with evidence; evidence IDs refer to [`TESTING.md`](TESTING.md).
-Last updated: 25 Nov 2026.
+Last updated: 26 Nov 2026 · branch `feature/applications-platform`
 
-## Mandatory requirements
+**Statuses:** COMPLETE AND VERIFIED · IMPLEMENTED BUT NOT VERIFIED · PARTIALLY IMPLEMENTED · NOT IMPLEMENTED · BLOCKED
+**Evidence levels:** *Live* = live Supabase project through its public API, or the production URL · *Local DB* = PostgreSQL 17.5 (PGlite) suites in `supabase/tests/local-pglite/` · *Unit* = vitest · *Browser* = production build in a browser.
+IMPLEMENTED ≠ TESTED ≠ VERIFIED ≠ DEPLOYED.
 
-| ID | Requirement | What Worldkin does | Status | Evidence | Gap / next step |
+> **Status update (26 Nov 2026, evening). This supersedes older notes in the table below.**
+> - `wk06` and `wk07` **are applied** to project `ekkvwgohpzliwbmjnrth`. The recorded SQL is byte-identical to the committed files.
+> - Live evidence after applying (`docs/evidence/live_wk06/`, `live_wk07/`):
+>   - applications run ×3, A05 run ×3 and the security run: all PASS;
+>   - storage S14 PASS.
+> - Read-only checks on 26 Nov:
+>   - RLS is enabled on 17/17 public tables (28 policies);
+>   - every SECURITY DEFINER function has a fixed `search_path`.
+> - Email: a sign-up after Gmail SMTP was enabled was confirmed by link 37 s after sending (Auth logs, 09:55 UTC). **Real email E2E: PASS.**
+> - **Production frontend** is still `e616aad` (pre-wk06 UI). It works against the current database: Explore returns results, and RPC signatures were checked compatible.
+> - **Feature branch** (`109cab1`+) is on a Vercel Preview. Its new pages have **not** been viewed in a browser while signed in.
+>
+> | Row | Item | Previous status | Now |
+> |---|---|---|---|
+> | 6, 19 | Applications, offers, hiring lifecycle | Local DB only | **Verified live (API):** apps L1–L10, C1–C3 |
+> | 20 | Offer acceptance uses the same capacity core | Offer path not live | **Verified live:** last-seat race, 1 confirmed + 1 waitlisted |
+> | 26 | Duplicate prevention for applications and acceptance | Joins only | **Verified live:** 5 parallel applications → 1 row; triple accept → 1 signup |
+> | 37–40 | RLS, isolation, privacy and RPC security on the new tables | Not live | **Verified live:** apps L4–L7, S1–S4; storage S14 |
+> | 44, 46 | Idempotent acceptance; concurrency testing | Accept not live | **Verified live:** apps C3, A05 runs 1–3 |
+> | 8, 30–31 | New dashboards, mobile and tablet | — | **Implemented, not browser-verified** (needs a signed-in Preview check) |
+> | 41 | L19 (admin cannot escalate or suspend admins) | BLOCKED | Still BLOCKED (needs a Founder sign-in) |
+
+| # | Requirement | Implementation | Database | Evidence | Status |
 |---|---|---|---|---|---|
-| M01 | Complete functional system | Three modules: **Volunteer** (discover → join/waitlist → cancel → hours record), **Organization** (onboarding, team, opportunities, shifts, roster, attendance, dashboard, audit), **Platform admin** (org review, suspension, platform audit) | Volunteer + Organization: **Tested Locally** · Admin: **Implemented** | TESTING §8 journeys (localhost against live DB) | Admin journey needs Founder sign-in; all three modules need re-running on the production URL once the key is fixed |
-| M02 | Database integration & persistence | Supabase PostgreSQL 17: 9 tables, migrations wk01–wk05, generated TS types, every screen reads/writes through RLS or RPCs | **Verified Live** (database) · Frontend: **Tested Locally** | TESTING §2, §5, §6, §7 | Production frontend blocked by wrong `VITE_SUPABASE_PUBLISHABLE_KEY` on Vercel |
-| M03 | Authentication & authorization | Email/password sign-up (email confirmation ON), sign-in, sign-out, persistent session, protected routes, `next=` return; roles volunteer / coordinator / org_admin / platform_admin enforced in the DB | Sign-in/out + authorization: **Verified Live** (API) · Sign-up UI: **Implemented** | TESTING §4 P0 (14 sign-ins), §6 L1–L18 | Sign-up on production currently fails with "Invalid API key" (env value, see §M08); test sign-up + email confirmation after the fix and after Auth Site URL is set |
-| M04 | Complex business logic | Capacity + FIFO waitlist, automatic promotion, idempotent joins, no overlapping commitments, skill eligibility, time frozen after signups, attendance without self-verification, org verification lifecycle, last-admin protection | **Verified Live** | TESTING §7 C1–C4 (runs 2–6), §5 E9–E10 (local), §6 L12–L14 | — |
-| M05 | Dynamic data processing | Full-text search, filters (cause, country, mode, date, open-only), 4 sorts, pagination; volunteer impact (verified hours by cause); org dashboard (fill rate, no-show rate, hours) | **Tested Locally** | TESTING §1 seed E5–E8, §8 volunteer/coordinator journeys | Re-check on production |
-| M06 | Error & edge-case handling | WK_* error codes mapped to plain messages, retry on failed loads, loading/empty/success states, confirmation dialogs, invalid env shown as a configuration page, race conditions handled in the DB | **Tested Locally** · race edge cases **Verified Live** | TESTING §1 unit tests (24), §7 C1d/C3b, §8 capacity-0 check | — |
-| M07 | Responsive UI & accessibility | Mobile-first layout, mobile menu, skip link, visible focus, labelled forms, `aria-live` notices, native `<dialog>`, per-page titles, focus moved to content on navigation | **Implemented** · 375 px check **Tested Locally** (org dashboard only) | TESTING §8 mobile row | Full pass of every page at 375 / 768 / 1280 px and a keyboard-only run |
-| M08 | Deployment & documentation | Vercel project `worldkin-roster` (team Eleventh Cipher) from GitHub `main`; `vercel.json` SPA rewrite; README, blueprint, database design, testing, coverage docs | Deployment: **Implemented** (live but broken) · Docs: **Implemented** | Vercel deployments READY on 332c678 | Owner sets the real publishable key (Production + Preview); push `vercel.json` fix; set Supabase Auth Site URL; production smoke test; Documentation PDF; demo video |
+| **M01** | | | | | |
+| 1 | Authentication and role-specific functionality | `src/auth/*`, `DashboardRedirect`, role guards, three dashboards | Auth, `profiles.platform_role`, `org_members` | Live: sign-in 14 accounts, L1–L18, browser journeys (TESTING §4, §6, §8) | COMPLETE AND VERIFIED (existing roles) · new role redirect IMPLEMENTED BUT NOT VERIFIED |
+| 2 | Volunteer and Organization registration | `/join`, `/signup?as=…`, `OrgCreatePage` (2-step) | `create_organization` (extended), `organization_private` | Live: sign-up + email confirmation (§11); Local DB ORG1–ORG4 | PARTIALLY IMPLEMENTED → org extended fields IMPLEMENTED BUT NOT VERIFIED live |
+| 3 | Volunteer profile management | `ProfilePage` (education, skills, interests, languages, availability, experience, about, photo, private phone) | `profiles` (+6 columns), `profile_private`, `avatars` bucket | Local DB P5–P6; Unit (validation) | IMPLEMENTED BUT NOT VERIFIED |
+| 4 | Organization profile management | `OrgSettingsPage` (public details, logo, private verification data, documents) | `organizations` (+5 columns), `organization_private`, `org-docs` bucket | Local DB PRIV1–PRIV3 | IMPLEMENTED BUT NOT VERIFIED (storage untestable locally) |
+| 5 | Opportunity CRUD | `OpportunityEditorPage` (+ type, compensation, selection mode, deadline), close/publish | `opportunities`, guard triggers, CHECKs | Live: create/publish/close via API (A05 fixtures); Local DB OPP1–OPP4, AP9, M3 | COMPLETE AND VERIFIED (base) · new fields IMPLEMENTED BUT NOT VERIFIED live |
+| 6 | Application submission and hiring decisions | `ApplyPanel`, `MyApplicationsPage`, `OrgApplicationsPage` | `applications`, `application_notes`, `offers`; RPCs apply/withdraw/review/send/revoke/accept/decline | Local DB AP1–AP9, R1–R2, O1–O10, E1–E3, X1–X7 | COMPLETE AND VERIFIED (live `docs/evidence/live_wk06/` apps runs 1–3: L2–L10, S1–S4) |
+| 7 | Shift and Signup management | `ShiftManagePage`, `OpportunityPage`, `MyShiftsPage` | `shifts`, `signups`, `join_shift`/`_join_shift_core`, `cancel_signup`, capacity RPCs | Live: A05 C1–C4 ×6 runs, browser journeys | COMPLETE AND VERIFIED |
+| 8 | Complete user-facing workflows | Volunteer, organization, admin dashboards with section navigation | all of the above | Browser journeys (pre-wk06, §8); new flows not yet live | PARTIALLY IMPLEMENTED (admin journey + new flows not verified live) |
+| **M02** | | | | | |
+| 9 | Correct tables and relationships | 17 tables | wk01–wk06 | Local DB: all migrations apply; Live: 9 tables (pre-wk06) | COMPLETE AND VERIFIED (9 live) · 8 new tables IMPLEMENTED BUT NOT VERIFIED live |
+| 10 | Primary and foreign keys | composite FKs keep org isolation (`applications`→`opportunities(id, org_id)`, `offers`→`shifts(id, org_id)`) | | Local DB D1–D4, O1 (shift mismatch) | IMPLEMENTED BUT NOT VERIFIED live |
+| 11 | Constraints and indexes | CHECKs (compensation, deadline, rating, lengths), partial unique (one active application, one pending offer), exclusion constraint, query indexes | | Local DB OPP1–OPP2, AP3–AP4, O4, F4; Live: A05 | COMPLETE AND VERIFIED (existing) · new IMPLEMENTED BUT NOT VERIFIED live |
+| 12 | Persistence and integrity | append-only audit/participation, transactions, idempotency | | Live: §6–§7; Local DB 99 + 96 | COMPLETE AND VERIFIED |
+| **M03** | | | | | |
+| 13 | Secure signup and login | email confirmation ON, `/auth/confirmed`, password reset `/forgot-password` → `/auth/reset` | Supabase Auth | Live: production sign-up + confirmation (§11); reset IMPLEMENTED | COMPLETE AND VERIFIED (sign-up/in) · reset IMPLEMENTED BUT NOT VERIFIED |
+| 14 | Role-based authorization | RLS + RPC checks (`is_org_member`, `is_org_admin`, `is_platform_admin`) | wk03, wk06 policies | Live L1–L18; Local DB P1–P8, S1–S9, F6, C4 | COMPLETE AND VERIFIED (existing) · new IMPLEMENTED BUT NOT VERIFIED live |
+| 15 | Protected routes | `RequireAuth`, `RequireOrgRole`, `RequirePlatformAdmin` (UX only; DB is the gate) | — | Browser: coordinator blocked from admin-only pages (§8) | COMPLETE AND VERIFIED |
+| 16 | Secure session and password handling | supabase-js session, tokens stripped from URL, no secrets in browser, env guard | — | Browser §11; Unit (env guard, redirect safety) | COMPLETE AND VERIFIED |
+| **M04** | | | | | |
+| 17 | Organization verification | pending → verified/rejected/suspended; docs + private details for review; unverified cannot publish | `review_organization`, guard trigger, `organization_private` | Live: L15, seed states; Local DB ORG4 | COMPLETE AND VERIFIED (workflow) · document review IMPLEMENTED BUT NOT VERIFIED |
+| 18 | Paid, Stipend-based and Voluntary opportunities | type + mandatory compensation details shown before applying; filter | `compensation_type`, CHECK | Local DB OPP1, OPP3, ST3; Unit | IMPLEMENTED BUT NOT VERIFIED |
+| 19 | Application lifecycle and hiring workflow | submitted → under_review → selected (72 h offer) → accepted/declined/expired; rejected; withdrawn; revoked | applications/offers RPCs, server-side expiry | Local DB AP*, O*, E*, X* (all pass) | IMPLEMENTED BUT NOT VERIFIED |
+| 20 | Shift capacity and waitlist logic | row locks, FIFO, promotion; offer acceptance uses the same core | `_join_shift_core` | Live A05 ×6; Local DB W1–W2 | COMPLETE AND VERIFIED (join path A05 ×6; offer path apps C1–C2 ×3) |
+| **M05** | | | | | |
+| 21 | Database-driven homepage statistics | Home stats row | `platform_stats()` | Local DB ST1 | IMPLEMENTED BUT NOT VERIFIED |
+| 22 | Dynamic opportunity listings | Home (recent, closing soon), Explore, org profile | `search_opportunities` | Live (pre-wk06 version); Local DB ST3–ST4 | IMPLEMENTED BUT NOT VERIFIED (new version) |
+| 23 | Search, filtering and sorting | keyword, cause, type, mode, country, city, skill, date, open spots; 5 sorts; pagination; org directory search | | Local DB ST2–ST4 | IMPLEMENTED BUT NOT VERIFIED |
+| 24 | Dynamic dashboards | volunteer impact, org dashboard, admin overview | `my_impact`, `org_dashboard`, `admin_overview` | Live: browser journeys (impact/org); Local DB ST6 | COMPLETE AND VERIFIED (volunteer/org) · admin IMPLEMENTED BUT NOT VERIFIED |
+| **M06** | | | | | |
+| 25 | Form validation | zod schemas mirror DB CHECKs; field-level messages | CHECKs | Unit 33/33 | COMPLETE AND VERIFIED (unit) |
+| 26 | Duplicate prevention | idempotent joins/applications/acceptance, one active application, one pending offer, one feedback | unique indexes | Live C2; Local DB AP3–AP4, O8, F4 | COMPLETE AND VERIFIED (joins; applications L3: 5 parallel → 1 row) |
+| 27 | Authorization error handling | WK_* codes → plain messages; "No access" screens | | Unit; Browser §8 | COMPLETE AND VERIFIED |
+| 28 | Database and network error handling | `toAppError`, retry buttons, network/rate-limit messages | | Unit; Browser (graceful "—" when RPC missing) | COMPLETE AND VERIFIED |
+| 29 | Loading, empty, success, failure states | skeletons, EmptyState, aria-live notices, dialogs | | Browser §8, §10, this branch at 375 px | COMPLETE AND VERIFIED |
+| **M07** | | | | | |
+| 30 | Mobile responsiveness | | | Browser 375 px: home, join, sign-up, explore, organizations (no overflow) | COMPLETE AND VERIFIED (public pages) · dashboards after wk06 NOT VERIFIED |
+| 31 | Tablet and desktop | responsive grids, scrollable dashboard nav | | Browser desktop | PARTIALLY IMPLEMENTED (tablet not measured) |
+| 32 | Accessible forms, navigation, status | labels, skip link, focus on navigation, per-page titles, text+colour badges, aria-live | | Browser §10 | COMPLETE AND VERIFIED (checked pages) |
+| **M08** | | | | | |
+| 33 | Production-build readiness | `npm run build` | | build OK (this branch) | COMPLETE AND VERIFIED |
+| 34 | Environment configuration | `.env.example`, env guard, Vercel vars | | Live production (§11) | COMPLETE AND VERIFIED |
+| 35 | Setup and architecture documentation | README, BLUEPRINT, DATABASE_DESIGN, DESIGN_DECISIONS | | docs | IMPLEMENTED BUT NOT VERIFIED (final review pending) |
+| 36 | Testing documentation | `docs/TESTING.md`, `docs/evidence/` | | docs | COMPLETE AND VERIFIED (for executed tests) |
+| **A03** | | | | | |
+| 37 | Correct RLS policies | RLS on all 17 tables; deny-by-default grants | wk03, wk06 | Live L1–L18; Local DB P*, D*, N*, C* | COMPLETE AND VERIFIED (all 17 tables have RLS, read-only check 26 Nov; live `docs/evidence/live_wk06/` security L1–L18, apps L4–L7/S2/S4) |
+| 38 | Organization-level data isolation | `is_org_member` on applications/offers/notes/private | | Live L11, L18; Local DB P1–P2, PRIV1 | COMPLETE AND VERIFIED (security L11, L15, L18; apps L5) |
+| 39 | Volunteer privacy | phone in owner-only table; applicant RPC without contact data; public feedback first name only | `profile_private`, `org_applications`, `org_feedback` | Local DB P5–P7, F5 | COMPLETE AND VERIFIED (apps L6–L7: no contact fields for coordinators; S4 private notes) |
+| 40 | Secure RPC authorization | SECURITY DEFINER, `search_path=''`, explicit EXECUTE grants, internal functions not callable | | Live L7, L10c; Local DB D5–D6 | COMPLETE AND VERIFIED (existing) · new IMPLEMENTED BUT NOT VERIFIED live |
+| 41 | Platform Admin privilege protection | no public admin sign-up; role not writable; admins cannot suspend admins/self | | Live L4, L10; Local DB S1–S2, S6, S9 | COMPLETE AND VERIFIED (existing) · L19 BLOCKED (Founder sign-in) |
+| **A05** | | | | | |
+| 42 | Atomic shift booking | single transaction per booking | | Live C1–C4 ×6 | COMPLETE AND VERIFIED |
+| 43 | Capacity locking and FIFO waitlist | shift `FOR UPDATE`, `queue_seq` | | Live C1, C4 | COMPLETE AND VERIFIED |
+| 44 | Idempotent operations | idempotency keys (join, accept), replayed responses | | Live C2; Local DB O8 | COMPLETE AND VERIFIED (join A05; accept apps C3: triple parallel accept → one signup) |
+| 45 | Concurrent booking safety | volunteer lock (wk05), exclusion constraint, lock order volunteer → application → offer → shift → signup, SKIP LOCKED expiry | | Live C3 (deadlock fixed, runs 4–6) | COMPLETE AND VERIFIED (join A05 ×6; concurrent offer acceptance apps C1–C3 ×3) |
+| 46 | Comprehensive concurrency testing | `concurrency_check.mjs`, `live_applications_check.mjs` | | 6 live runs | COMPLETE AND VERIFIED (A05 runs 1–3, C1–C4 ×6, apps C1–C3 ×3) |
+| **Product** | | | | | |
+| 47 | End-to-end integration (public pages, auth, registration, dashboards, opportunities, applications, offers, signups, attendance, complaints, feedback, database, notifications) | all modules wired in router and navigation | wk01–wk07 | Local DB + Unit + Browser (pre-wk06) | IMPLEMENTED BUT NOT VERIFIED — BLOCKED on applying wk06/wk07 |
 
-## Advanced challenges
+## What would make every item COMPLETE AND VERIFIED
 
-| ID | Scenario | Status | Evidence |
-|---|---|---|---|
-| A05 | 10 volunteers race for 1 seat → exactly 1 confirmed, 3 waitlisted (FIFO 1,2,3), 6 rejected | **Verified Live** | §7 C1 runs 1–6 |
-| A05 | Same request sent 5× in parallel (idempotency key) → 1 row | **Verified Live** | §7 C2 |
-| A05 | One volunteer joins two overlapping shifts at once → one succeeds, other `WK_SCHEDULE_CONFLICT` (deadlock found in run 1, fixed by wk05) | **Verified Live** | §7 C3, runs 4–6 |
-| A05 | Cancel promotes waitlist head in the same transaction | **Verified Live** | §7 C4 |
-| A03 | Anonymous / volunteer / coordinator / org-admin isolation, column grants, no direct writes, no forged audit, no privilege escalation | **Verified Live** | §4 L1–L10e, §6 L11–L18 |
-| A03 | Past-shift guard cannot be bypassed through the API (`_is_api_request`) | **Verified Live** | §6 L12–L13 |
-| A03 | No user enumeration through invites | **Verified Live** | §6 L17 |
-| A03 | Platform admin recognised via API | **Not Started** (needs Founder sign-in) | §6 L19 skipped |
-
-## Production blockers (25 Nov 2026)
-
-1. Vercel `VITE_SUPABASE_PUBLISHABLE_KEY` holds the text "Supabase Publishable key" instead of the key → Supabase answers `401 Invalid API key`. Owner action. The app now rejects such values at startup with a clear configuration message.
-2. Direct refresh of `/signup` etc. returns 404 → fixed locally by `vercel.json`; needs push + deploy approval.
+1. ~~Apply wk06/wk07~~ (done), ~~live re-runs~~ (done, all PASS).
+2. A signed-in browser check of the Preview: volunteer and organization dashboards, Experience Passport.
+3. Browser journeys on a preview deployment: volunteer (profile → apply → offer → accept), organization (register → upload documents → verify → publish → review → offer → attendance), admin (verify, moderate, complaints, feedback, suspension) — the admin journey needs the Founder's sign-in.
+4. Tablet (768 px) pass.

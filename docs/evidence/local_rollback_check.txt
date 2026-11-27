@@ -1,0 +1,3 @@
+PASS  RB1  schema after wk06 + rollback is identical to wk01..wk05 (9 catalog sections)
+PASS  RB2  wk06 applies again cleanly after the rollback
+PASS  RB3  applying wk06 twice fails atomically and leaves the schema intact (17 tables)
